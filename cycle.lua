@@ -20,9 +20,12 @@ function cycle.new(cfg, gt)
   self.useProgress = gt.has(self.machine, "getWorkProgress")
     and gt.has(self.machine, "hasWork")
 
+  self.progress = 0
+  self.max = gt.call(self.machine, "getWorkMaxProgress", 0) or 0
+  self.busy = false
+
   if self.useProgress then
-    local max = gt.call(self.machine, "getWorkMaxProgress", nil)
-    print(string.format("cycle: tracking plant progress, %s tick cycle", tostring(max)))
+    print(string.format("cycle: tracking plant progress, %s tick cycle", tostring(self.max)))
   else
     print("cycle: plant exposes no progress, free running on a timer")
   end
@@ -47,6 +50,9 @@ function cycle:poll()
   local working = gt.call(self.machine, "hasWork", nil)
   local ended = false
 
+  self.progress = progress
+  self.busy = working == true
+
   if self.lastProgress > progress or (working == false and self.lastProgress ~= 0) then
     ended = true
     self.lastProgress = 0
@@ -54,8 +60,19 @@ function cycle:poll()
 
   if working then self.lastProgress = progress end
 
-  if ended then return self:edge() end
+  if ended then
+    self.max = gt.call(self.machine, "getWorkMaxProgress", self.max) or self.max
+    return self:edge()
+  end
   return false
+end
+
+function cycle:fraction()
+  if not self.useProgress or self.max == nil or self.max <= 0 then return nil end
+  local f = self.progress / self.max
+  if f < 0 then return 0 end
+  if f > 1 then return 1 end
+  return f
 end
 
 function cycle:working()

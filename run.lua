@@ -17,7 +17,7 @@ local function build(name)
 end
 
 local modules = {}
-for _, name in ipairs({ "power", "stock", "watch", "t2", "t3", "t4" }) do
+for _, name in ipairs({ "power", "stock", "watch", "t2", "t3", "t4", "ui" }) do
   if cfg[name] and cfg[name].enabled then
     local instance, err = build(name)
     if instance then

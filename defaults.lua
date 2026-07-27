@@ -10,6 +10,13 @@ return {
     seconds = 120,
   },
 
+  ui = {
+    enabled = true,
+    mode = "pinned",
+    barWidth = 24,
+    minInterval = 0.5,
+  },
+
   power = {
     enabled = true,
     reserveFraction = 0.05,

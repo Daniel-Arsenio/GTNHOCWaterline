@@ -72,9 +72,14 @@ local function report(field, address, method)
         field, resolved:sub(1, 8), ctype, method, tostring(result)))
       return
     end
-    local size = type(result) == "table" and #result or "?"
-    print(string.format("%-28s %-10s %-14s ok, %s returned %s",
-      field, resolved:sub(1, 8), ctype, method, tostring(size)))
+    local shown
+    if type(result) == "table" then
+      shown = #result .. " entries"
+    else
+      shown = tostring(result)
+    end
+    print(string.format("%-28s %-10s %-14s ok, %s = %s",
+      field, resolved:sub(1, 8), ctype, method, shown))
     return
   end
 

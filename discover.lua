@@ -5,7 +5,8 @@ local RELEVANT = setmetatable({
   transposer = true,
 }, {
   __index = function(_, key)
-    return type(key) == "string" and key:sub(1, 3) == "me_"
+    if type(key) ~= "string" then return false end
+    return key:sub(1, 3) == "me_" or key:find("interface", 1, true) ~= nil
   end,
 })
 
@@ -22,7 +23,7 @@ local function describe(address, ctype)
     end
   end
 
-  if ctype:sub(1, 3) == "me_" then
+  if ctype:sub(1, 3) == "me_" or ctype:find("interface", 1, true) then
     local bits = {}
     local function try(method)
       local ok, result = pcall(dev[method])

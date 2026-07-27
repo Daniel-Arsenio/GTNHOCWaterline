@@ -83,11 +83,23 @@ function gt.findMachine(name)
   return nil
 end
 
-function gt.machineFor(address, pattern, label)
+function gt.machineFor(address, expected, label)
   if type(address) == "string" and #address >= 3 then
-    return gt.proxy(address, label), address
+    local ok, proxy = pcall(gt.proxy, address, label)
+    if ok and proxy then
+      local actual = gt.call(proxy, "getName", nil)
+      if expected == nil or actual == nil or actual == expected
+         or (type(actual) == "string" and actual:lower():find(expected:lower(), 1, true)) then
+        return proxy, address
+      end
+      print(string.format("%s: %s is %s, not %s, ignoring the configured address",
+        label, address:sub(1, 8), tostring(actual), expected))
+    else
+      print(string.format("%s: %s unusable, falling back to name search", label, address:sub(1, 8)))
+    end
   end
-  local proxy, found, name = gt.findMachine(pattern)
+
+  local proxy, found, name = gt.findMachine(expected)
   if proxy then
     print(string.format("%s: matched %s by name (%s)", label, found:sub(1, 8), name))
     return proxy, found
