@@ -16,13 +16,39 @@ local function merge(base, over)
   return base
 end
 
+local function validate(defaults, user, path, problems)
+  for key, value in pairs(user) do
+    if type(key) ~= "number" then
+      local here = path == "" and tostring(key) or (path .. "." .. tostring(key))
+      if defaults[key] == nil then
+        problems[#problems + 1] = here
+      elseif type(value) == "table" and type(defaults[key]) == "table"
+             and not isArray(value) and not isArray(defaults[key]) then
+        validate(defaults[key], value, here, problems)
+      end
+    end
+  end
+end
+
 local cfg = dofile(BASE .. "defaults.lua")
 
 local ok, user = pcall(dofile, BASE .. "config.lua")
-if ok and type(user) == "table" then
-  merge(cfg, user)
-else
+if not ok or type(user) ~= "table" then
   print("settings: config.lua missing or invalid, running on defaults")
+  return cfg
 end
 
+local problems = {}
+validate(cfg, user, "", problems)
+
+if #problems > 0 then
+  table.sort(problems)
+  print("settings: " .. #problems .. " setting(s) in config.lua match nothing in defaults.lua")
+  for _, key in ipairs(problems) do
+    print("  " .. key .. "  IGNORED")
+  end
+  print("settings: these do nothing. a renamed option is the usual cause.")
+end
+
+merge(cfg, user)
 return cfg

@@ -167,6 +167,27 @@ function gt.lineNumber(info, line, prefix)
   return tonumber(data:match("([%d%.]+)"))
 end
 
+function gt.prefixNumber(info, prefix, fallbackLine)
+  if type(prefix) == "string" and prefix ~= "" then
+    for i = 1, #info do
+      if type(info[i]) == "string" and info[i]:find(prefix, 1, true) then
+        return gt.lineNumber(info, i, prefix), i
+      end
+    end
+  end
+  if fallbackLine then
+    return gt.lineNumber(info, fallbackLine, prefix), fallbackLine
+  end
+  return nil
+end
+
+function gt.dumpSensor(info, label)
+  print("--- " .. label .. " sensor lines")
+  for i = 1, #info do
+    print(string.format("  [%2d] %s", i, info[i]))
+  end
+end
+
 function gt.lineString(info, line, prefix)
   local data = info[line]
   if type(data) ~= "string" then return nil end
@@ -205,8 +226,12 @@ function gt.tankTotals(transposer, side)
   return amount, capacity
 end
 
+gt.SIDE_NAME = { [0] = "bottom", "top", "north", "south", "west", "east" }
+
 function gt.findFluid(transposer, fluidName, ignore)
   ignore = ignore or {}
+  local bestSide, bestTank, bestAmount = nil, nil, -1
+
   for side = 0, 5 do
     if not ignore[side] then
       local tanks = gt.call(transposer, "getTankCount", 0, side) or 0
@@ -214,12 +239,17 @@ function gt.findFluid(transposer, fluidName, ignore)
         local fluid = gt.call(transposer, "getFluidInTank", nil, side, tank)
         if type(fluid) == "table" and type(fluid.name) == "string"
            and fluid.name:find(fluidName, 1, true) then
-          return side, tank
+          local amount = fluid.amount or 0
+          if amount > bestAmount then
+            bestSide, bestTank, bestAmount = side, tank, amount
+          end
         end
       end
     end
   end
-  return nil
+
+  if bestSide == nil then return nil end
+  return bestSide, bestTank, bestAmount
 end
 
 function gt.findItem(transposer, label, ignore)

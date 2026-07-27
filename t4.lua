@@ -17,7 +17,12 @@ function t4.new(cfg, gt, clock)
   self.acidSink = sides[self.c.acid.sinkSide] or sides.bottom
   self.baseSink = sides[self.c.base.sinkSide] or sides.bottom
 
-  local aSide, aTank = gt.findFluid(self.acidT, self.c.acid.fluidName, { [self.acidSink] = true })
+  local aSide, aTank
+  if self.c.acid.sourceSide then
+    aSide, aTank = sides[self.c.acid.sourceSide], self.c.acid.sourceTank or 1
+  else
+    aSide, aTank = gt.findFluid(self.acidT, self.c.acid.fluidName, { [self.acidSink] = true })
+  end
   if aSide == nil then
     error("no " .. self.c.acid.fluidName .. " found on the t4 acid transposer", 0)
   end
@@ -29,7 +34,9 @@ function t4.new(cfg, gt, clock)
   end
   self.baseSide = bSide
 
-  print(string.format("t4: acid side %d tank %d, dust side %d", aSide, aTank, bSide))
+  print(string.format("t4: acid from %s tank %d into %s, dust from %s into %s",
+    gt.SIDE_NAME[aSide] or aSide, aTank, gt.SIDE_NAME[self.acidSink] or self.acidSink,
+    gt.SIDE_NAME[bSide] or bSide, gt.SIDE_NAME[self.baseSink] or self.baseSink))
 
   self.dosed = false
   self.stats = { cycles = 0, dosed = 0, shortfalls = 0 }
@@ -37,7 +44,25 @@ function t4.new(cfg, gt, clock)
 end
 
 function t4:ph()
-  return self.gt.lineNumber(self.gt.sensor(self.unit), self.c.phLine, self.c.phPrefix)
+  local gt = self.gt
+  local info = gt.sensor(self.unit)
+  local value, line = gt.prefixNumber(info, self.c.phPrefix, nil)
+
+  if value == nil then
+    if not self.warnedLine then
+      self.warnedLine = true
+      gt.log(true, "t4: no line matching %q, falling back to line %d",
+        self.c.phPrefix, self.c.phLine)
+      gt.dumpSensor(info, "pH unit")
+    end
+    return gt.lineNumber(info, self.c.phLine, self.c.phPrefix)
+  end
+
+  if self.foundLine ~= line then
+    self.foundLine = line
+    gt.log(true, "t4: reading pH from sensor line %d", line)
+  end
+  return value
 end
 
 function t4:putDust(count)
@@ -66,6 +91,21 @@ function t4:tick(started)
   if started then
     self.stats.cycles = self.stats.cycles + 1
     self.dosed = false
+
+    if c.acid.bufferWarn and c.acid.bufferWarn > 0 then
+      local fluid = gt.call(self.acidT, "getFluidInTank", nil, self.acidSide, self.acidTank)
+      local have = type(fluid) == "table" and (fluid.amount or 0) or 0
+      if have < c.acid.bufferWarn then
+        gt.log(true, "t4: acid buffer down to %d L", have)
+      end
+    end
+
+    if c.base.bufferWarn and c.base.bufferWarn > 0 then
+      local have = gt.countItems(self.baseT, self.baseSide, c.base.itemLabel)
+      if have < c.base.bufferWarn then
+        gt.log(true, "t4: sodium hydroxide down to %d", have)
+      end
+    end
   end
 
   if self.dosed then return end

@@ -37,14 +37,24 @@ local function describe(address, ctype)
   end
 
   if ctype == "transposer" then
-    local sides = require("sides")
+    local names = { [0] = "bottom", "top", "north", "south", "west", "east" }
     local seen = {}
-    for name, side in pairs(sides) do
-      if type(side) == "number" and #name > 1 then
-        local okT, tanks = pcall(dev.getFluidInTank, side)
-        if okT and type(tanks) == "table" and tanks[1] and (tanks[1].capacity or 0) > 0 then
-          seen[#seen + 1] = string.format("%s:%s", name, tanks[1].label or "empty")
+    for side = 0, 5 do
+      local bits = {}
+      local tanks = 0
+      local okCount, count = pcall(dev.getTankCount, side)
+      if okCount and type(count) == "number" then tanks = count end
+      for tank = 1, tanks do
+        local okT, fluid = pcall(dev.getFluidInTank, side, tank)
+        if okT and type(fluid) == "table" and (fluid.capacity or 0) > 0 then
+          bits[#bits + 1] = string.format("%s %d/%d",
+            fluid.name or "empty", fluid.amount or 0, fluid.capacity or 0)
         end
+      end
+      local okS, stacks = pcall(dev.getAllStacks, side)
+      if okS and stacks ~= nil then bits[#bits + 1] = "inventory" end
+      if #bits > 0 then
+        seen[#seen + 1] = names[side] .. "(" .. side .. ")=" .. table.concat(bits, ",")
       end
     end
     if #seen > 0 then return table.concat(seen, " ") end

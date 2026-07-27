@@ -11,6 +11,7 @@ function stock.new(cfg, gt, clock)
   self.alarmed = {}
   self.lastLevel = {}
   self.jobSeen = {}
+  self.trend = {}
   self.nextCheck = 0
   self.stats = { requested = 0, done = 0, failed = 0, noPattern = 0 }
   return self
@@ -78,8 +79,42 @@ function stock:settled(key, job)
   return false
 end
 
+function stock:trendReport(entry, have)
+  local t = self.trend[entry.key]
+
+  if t == nil or self.jobSeen[entry.key] then
+    self.trend[entry.key] = { first = have, cycles = 0 }
+    return
+  end
+
+  t.cycles = t.cycles + 1
+
+  local every = entry.trendEvery or 10
+  if t.cycles < every then return end
+
+  local net = have - t.first
+  local rate = net / t.cycles
+
+  if math.abs(rate) < (entry.trendDeadband or 1) then
+    self.gt.log(self.cfg.log.verbose, "stock: %s stable over %d cycles, loop is closed",
+      entry.key, t.cycles)
+  elseif rate < 0 then
+    self.gt.log(true, "stock: %s losing %d per cycle over %d cycles, something is voiding",
+      entry.key, math.floor(-rate), t.cycles)
+  else
+    self.gt.log(self.cfg.log.verbose, "stock: %s gaining %d per cycle", entry.key, math.floor(rate))
+  end
+
+  self.trend[entry.key] = { first = have, cycles = 0 }
+end
+
 function stock:audit()
   for _, entry in ipairs(self.c.entries) do
+    if entry.trackTrend then
+      local have = self:amount(entry)
+      if have ~= nil then self:trendReport(entry, have) end
+    end
+
     if entry.expectedPerCycle then
       local have = self:amount(entry)
       local last = self.lastLevel[entry.key]
