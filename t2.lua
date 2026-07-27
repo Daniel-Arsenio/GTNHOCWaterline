@@ -4,19 +4,24 @@ t2.__index = t2
 function t2.new(cfg, gt, clock)
   local self = setmetatable({}, t2)
   self.cfg, self.gt, self.clock, self.c = cfg, gt, clock, cfg.t2
+  local address = self.c.interfaceAddress
+  if address == nil or address == "" then address = cfg.stock.interfaceAddress end
+  self.me = gt.proxy(address, "ME interface")
   self.unit = gt.proxy(self.c.unitAddress, "ozonation unit")
-  self.trans = gt.proxy(self.c.transposerAddress, "t2 ozone transposer")
   self.gated = nil
-  self.stats = { cycles = 0, byTier = {}, pushed = 0 }
+  self.warned = false
+  self.stats = { cycles = 0, byTier = {}, starved = 0 }
   for i = 1, #self.c.recipeTiers do self.stats.byTier[i] = 0 end
-  self.stats.belowFirstTier = 0
-
-  local _, capacity = gt.tankTotals(self.trans, self.c.hatchSide)
-  if capacity < self.c.ozoneTarget then
-    print(string.format("t2 warning: ozone hatch capacity %d L is below the %d L target, use a ZPM hatch",
-      capacity, self.c.ozoneTarget))
-  end
   return self
+end
+
+function t2:networkOzone()
+  local list = self.gt.call(self.me, "getFluidsInNetwork", nil)
+  if type(list) ~= "table" then return nil end
+  for _, f in ipairs(list) do
+    if f.label == self.c.ozoneLabel or f.name == self.c.ozoneLabel then return f.amount or 0 end
+  end
+  return 0
 end
 
 function t2:tierFor(level)
@@ -29,36 +34,44 @@ end
 
 function t2:tick(started)
   local c, gt = self.c, self.gt
-  local level = gt.tankTotals(self.trans, c.hatchSide)
+  local level = self:networkOzone()
+
+  if level == nil then
+    if not self.warned then
+      self.warned = true
+      gt.log(true, "t2: cannot read Ozone in the network, check the label in config.lua")
+    end
+    return
+  end
+  self.warned = false
 
   if started then
     self.stats.cycles = self.stats.cycles + 1
     local tier = self:tierFor(level)
+    local buffer = level / c.recipeTiers[#c.recipeTiers].volume
+
     if tier then
       self.stats.byTier[tier] = self.stats.byTier[tier] + 1
-      gt.log(self.cfg.log.verbose, "t2 cycle %d: %d L ozone, recipe tier %d at %d%% base",
-        self.clock.count, level, tier, c.recipeTiers[tier].chance)
     else
-      self.stats.belowFirstTier = self.stats.belowFirstTier + 1
-      gt.log(true, "t2 cycle %d: only %d L ozone, below the %d L minimum recipe",
-        self.clock.count, level, c.recipeTiers[1].volume)
+      self.stats.starved = self.stats.starved + 1
+      gt.log(true, "t2 cycle %d: only %d L Ozone in the network, below the smallest recipe",
+        self.clock.count, level)
     end
-  end
 
-  if level < c.ozoneTarget then
-    local moved = gt.pushFluid(self.trans, c.sourceSide, c.hatchSide, c.ozoneTarget - level)
-    if moved > 0 then
-      self.stats.pushed = self.stats.pushed + moved
-      level = level + moved
+    if buffer < (c.minBufferCycles or 2) then
+      gt.log(true, "t2 cycle %d: %d L Ozone left, %.1f full charges, engravers are behind",
+        self.clock.count, level, buffer)
+    elseif self.cfg.log.verbose then
+      gt.log(true, "t2 cycle %d: %d L Ozone, %.1f full charges buffered", self.clock.count, level, buffer)
     end
   end
 
   if c.gateUntilFull then
-    local want = level >= c.ozoneTarget
+    local want = level >= c.recipeTiers[#c.recipeTiers].volume
     if self.gated ~= want then
       gt.call(self.unit, "setWorkAllowed", nil, want)
       self.gated = want
-      gt.log(true, "t2 %s unit, ozone buffer at %d L", want and "enabled" or "held off", level)
+      gt.log(true, "t2 %s unit, network Ozone at %d L", want and "enabled" or "held off", level)
     end
   end
 end
@@ -69,7 +82,7 @@ function t2:status()
     parts[#parts + 1] = string.format("%d%%=%d", tier.chance, self.stats.byTier[i])
   end
   return string.format("t2 cycles=%d starved=%d [%s]",
-    self.stats.cycles, self.stats.belowFirstTier, table.concat(parts, " "))
+    self.stats.cycles, self.stats.starved, table.concat(parts, " "))
 end
 
 return t2

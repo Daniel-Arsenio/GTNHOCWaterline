@@ -28,6 +28,7 @@ return {
     interfaceAddress = "",
     checkInterval = 10,
     reserveCpus = 1,
+    consumptionTolerance = 0.5,
     entries = {
       {
         key = "carbon filter",
@@ -43,28 +44,51 @@ return {
         filter = { label = "Ozone" },
         target = 8000000,
         batch = 4000000,
+        expectedPerCycle = 1024000,
+      },
+      {
+        key = "sodium hydroxide",
+        kind = "item",
+        filter = { label = "Sodium Hydroxide Dust" },
+        target = 4096,
+        batch = 2048,
+      },
+      {
+        key = "hydrochloric acid",
+        kind = "fluid",
+        label = "Hydrochloric Acid",
+        filter = { label = "Hydrochloric Acid" },
+        target = 512000,
+        batch = 256000,
+      },
+      {
+        key = "polyaluminium chloride",
+        kind = "fluid",
+        label = "Polyaluminium Chloride",
+        filter = { label = "Polyaluminium Chloride" },
+        target = 3600000,
+        batch = 900000,
+        alarmOnly = true,
       },
     },
+  },
+
+  watch = {
+    enabled = true,
+    repeatEvery = 5,
   },
 
   t1 = {
     enabled = true,
     unitAddress = "",
-    transposerAddress = "",
-    sourceSide = sides.down,
-    busSide = sides.up,
-    sourceSlot = 1,
-    filterLabel = "Activated Carbon Filter",
-    filterStock = 16,
   },
 
   t2 = {
     enabled = true,
     unitAddress = "",
-    transposerAddress = "",
-    sourceSide = sides.down,
-    hatchSide = sides.up,
-    ozoneTarget = 1024000,
+    interfaceAddress = "",
+    ozoneLabel = "Ozone",
+    minBufferCycles = 3,
     gateUntilFull = false,
     recipeTiers = {
       { volume = 128000, chance = 20 },

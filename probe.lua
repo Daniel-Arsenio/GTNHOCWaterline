@@ -52,8 +52,6 @@ dumpMachine("t2 ozonation", cfg.t2.unitAddress)
 dumpMachine("t3 flocculation", cfg.t3.unitAddress)
 dumpMachine("t4 ph", cfg.t4.unitAddress)
 
-dumpTransposer("t1 filters", cfg.t1.transposerAddress)
-dumpTransposer("t2 ozone", cfg.t2.transposerAddress)
 dumpTransposer("t3 flocculant", cfg.t3.transposerAddress)
 dumpTransposer("t4 acid", cfg.t4.acid.transposerAddress)
 dumpTransposer("t4 base", cfg.t4.base.transposerAddress)

@@ -7,7 +7,7 @@ local gt = dofile(BASE .. "gtutil.lua")
 local clock = dofile(BASE .. "cycle.lua").new(cfg, gt)
 
 local modules = {}
-for _, name in ipairs({ "power", "stock", "t1", "t2", "t3", "t4" }) do
+for _, name in ipairs({ "power", "stock", "watch", "t2", "t3", "t4" }) do
   if cfg[name] and cfg[name].enabled then
     local ok, mod = pcall(dofile, BASE .. name .. ".lua")
     if not ok then

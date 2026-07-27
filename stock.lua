@@ -8,6 +8,9 @@ function stock.new(cfg, gt, clock)
   self.cfg, self.gt, self.clock, self.c = cfg, gt, clock, cfg.stock
   self.me = gt.proxy(self.c.interfaceAddress, "ME interface")
   self.jobs = {}
+  self.alarmed = {}
+  self.lastLevel = {}
+  self.jobSeen = {}
   self.nextCheck = 0
   self.stats = { requested = 0, done = 0, failed = 0, noPattern = 0 }
   return self
@@ -75,12 +78,33 @@ function stock:settled(key, job)
   return false
 end
 
+function stock:audit()
+  for _, entry in ipairs(self.c.entries) do
+    if entry.expectedPerCycle then
+      local have = self:amount(entry)
+      local last = self.lastLevel[entry.key]
+      if have and last and not self.jobSeen[entry.key] then
+        local used = last - have
+        if used < entry.expectedPerCycle * (self.c.consumptionTolerance or 0.5) then
+          self.gt.log(true, "stock: %s drew %d last cycle, expected about %d, the hatch may not be consuming it",
+            entry.key, used, entry.expectedPerCycle)
+        end
+      end
+      self.lastLevel[entry.key] = have
+    end
+  end
+  self.jobSeen = {}
+end
+
 function stock:tick(started)
   local now = computer.uptime()
 
   for key, job in pairs(self.jobs) do
+    self.jobSeen[key] = true
     if self:settled(key, job) then self.jobs[key] = nil end
   end
+
+  if started then self:audit() end
 
   if now < self.nextCheck then return end
   self.nextCheck = now + self.c.checkInterval
@@ -91,11 +115,19 @@ function stock:tick(started)
       if have == nil then
         self.gt.log(true, "stock: cannot read network level for %s", entry.key)
       elseif have < entry.target then
-        if self:cpuAvailable() then
+        if entry.alarmOnly then
+          if not self.alarmed[entry.key] then
+            self.alarmed[entry.key] = true
+            self.gt.log(true, "stock: %s down to %d of %d, the recycling loop is losing ground",
+              entry.key, have, entry.target)
+          end
+        elseif self:cpuAvailable() then
           local want = math.min(entry.batch, entry.target - have)
           local job = self:request(entry, want)
           if job then self.jobs[entry.key] = job end
         end
+      else
+        self.alarmed[entry.key] = nil
       end
     end
   end

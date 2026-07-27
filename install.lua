@@ -8,7 +8,7 @@ local DEST = "/home/waterline/"
 local FILES = {
   "gtutil.lua", "cycle.lua",
   "power.lua", "stock.lua",
-  "t1.lua", "t2.lua", "t3.lua", "t4.lua",
+  "watch.lua", "t2.lua", "t3.lua", "t4.lua",
   "run.lua", "probe.lua", "craftables.lua", "install.lua",
 }
 
