@@ -41,6 +41,7 @@ return {
     checkInterval = 10,
     reserveCpus = 1,
     consumptionTolerance = 0.5,
+    overrides = {},
     entries = {
       {
         key = "carbon filter",

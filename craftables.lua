@@ -11,6 +11,17 @@ local limit = tonumber(args[3]) or 400
 
 local me = gt.network(target, "getCraftables", "craftables target")
 
+local LW = math.max(20, math.floor((tui.width() - 26) * 0.45))
+local NW = math.max(18, math.floor((tui.width() - 26) * 0.40))
+
+local function probe(name, detail, hits, good)
+  tui.write(tui.c.key, tui.pad(name, 10))
+  tui.write(tui.c.dim, tui.pad(detail, 26))
+  tui.write(good and tui.c.ok or tui.c.warn, hits)
+  tui.reset()
+  io.write("\n")
+end
+
 local function describe(entry)
   if type(entry) ~= "table" then return nil, "not a table" end
 
@@ -40,17 +51,6 @@ end
 
 tui.header("craftables", "target " .. tostring(target):sub(1, 8)
   .. "   query " .. (raw ~= "" and raw or "(all)"))
-
-local LW = math.max(20, math.floor((tui.width() - 26) * 0.45))
-local NW = math.max(18, math.floor((tui.width() - 26) * 0.40))
-
-local function probe(name, detail, hits, good)
-  tui.write(tui.c.key, tui.pad(name, 10))
-  tui.write(tui.c.dim, tui.pad(detail, 26))
-  tui.write(good and tui.c.ok or tui.c.warn, hits)
-  tui.reset()
-  io.write("\n")
-end
 
 if raw ~= "" then
   local byLabel = gt.call(me, "getCraftables", nil, { label = raw })

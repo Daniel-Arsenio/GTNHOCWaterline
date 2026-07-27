@@ -1,5 +1,15 @@
 local computer = require("computer")
 
+local function filterText(filter)
+  if type(filter) ~= "table" then return tostring(filter) end
+  local parts = {}
+  for key, value in pairs(filter) do
+    parts[#parts + 1] = key .. "=" .. tostring(value)
+  end
+  table.sort(parts)
+  return "{" .. table.concat(parts, ", ") .. "}"
+end
+
 local stock = {}
 stock.__index = stock
 
@@ -13,6 +23,15 @@ function stock.new(cfg, gt, clock)
   self.jobSeen = {}
   self.trend = {}
   self.noPatternSeen = {}
+
+  local overrides = self.c.overrides or {}
+  for _, entry in ipairs(self.c.entries) do
+    local patch = overrides[entry.key]
+    if type(patch) == "table" then
+      for key, value in pairs(patch) do entry[key] = value end
+      gt.info(cfg.log.verbose, "stock: %s overridden", entry.key)
+    end
+  end
   self.nextCheck = 0
   self.stats = { requested = 0, done = 0, failed = 0, noPattern = 0 }
   return self
@@ -159,6 +178,8 @@ function stock:tick(started)
           end
         elseif self:cpuAvailable() then
           local want = math.min(entry.batch, entry.target - have)
+          self.gt.info(self.cfg.log.verbose, "stock: %s at %s of %s using %s",
+            entry.key, self.gt.num(have), self.gt.num(entry.target), filterText(entry.filter))
           local job = self:request(entry, want)
           if job then self.jobs[entry.key] = job end
         end

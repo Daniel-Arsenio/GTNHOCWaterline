@@ -82,6 +82,7 @@ end
 
 function tui.pad(text, width, right)
   text = tostring(text)
+  width = tonumber(width) or #text
   if #text > width then
     if width <= 1 then return text:sub(1, width) end
     return text:sub(1, width - 1) .. "~"
