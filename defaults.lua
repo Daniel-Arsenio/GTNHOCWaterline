@@ -12,6 +12,7 @@ return {
 
   ui = {
     enabled = true,
+    gpu.setResolution(120, 40)
     mode = "pinned",
     barWidth = 24,
     minInterval = 0.5,
