@@ -2,11 +2,11 @@ local internet = require("internet")
 local filesystem = require("filesystem")
 local computer = require("computer")
 
-local REPO = "https://raw.githubusercontent.com/USER/REPO/main/"
+local REPO = "https://raw.githubusercontent.com/Daniel-Arsenio/GTNHOCWaterline/main/"
 local DEST = "/home/waterline/"
 
 local FILES = {
-  "gtutil.lua", "cycle.lua",
+  "gtutil.lua", "cycle.lua", "defaults.lua", "settings.lua",
   "power.lua", "stock.lua",
   "watch.lua", "t2.lua", "t3.lua", "t4.lua",
   "run.lua", "probe.lua", "craftables.lua", "discover.lua", "install.lua",

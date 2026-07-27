@@ -1,5 +1,5 @@
 local BASE = "/home/waterline/"
-local cfg = dofile(BASE .. "config.lua")
+local cfg = dofile(BASE .. "settings.lua")
 local gt = dofile(BASE .. "gtutil.lua")
 
 local args = { ... }

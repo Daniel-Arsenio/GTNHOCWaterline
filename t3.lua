@@ -6,7 +6,6 @@ t3.__index = t3
 function t3.new(cfg, gt, clock)
   local self = setmetatable({}, t3)
   self.cfg, self.gt, self.clock, self.c = cfg, gt, clock, cfg.t3
-  self.unit = gt.proxy(self.c.unitAddress, "flocculation unit")
   self.trans = gt.proxy(self.c.transposerAddress, "t3 flocculant transposer")
   self.filling = false
   self.charge = 0

@@ -2,7 +2,7 @@ local BASE = "/home/waterline/"
 local event = require("event")
 local computer = require("computer")
 
-local cfg = dofile(BASE .. "config.lua")
+local cfg = dofile(BASE .. "settings.lua")
 local gt = dofile(BASE .. "gtutil.lua")
 local clock = dofile(BASE .. "cycle.lua").new(cfg, gt)
 

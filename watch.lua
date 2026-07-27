@@ -16,6 +16,10 @@ function watch.new(cfg, gt, clock)
     end
   end
 
+  if #self.units == 0 then
+    error("no unit addresses configured to watch", 0)
+  end
+
   self.stats = { cycles = 0, idleCycles = 0 }
   return self
 end

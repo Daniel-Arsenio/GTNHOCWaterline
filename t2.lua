@@ -7,7 +7,14 @@ function t2.new(cfg, gt, clock)
   local address = self.c.interfaceAddress
   if address == nil or address == "" then address = cfg.stock.interfaceAddress end
   self.me = gt.proxy(address, "ME interface")
-  self.unit = gt.proxy(self.c.unitAddress, "ozonation unit")
+  if type(self.me.getFluidsInNetwork) ~= "function" then
+    error("component " .. address .. " has no getFluidsInNetwork, point t2.interfaceAddress" ..
+      " at an ME Interface or ME Controller", 0)
+  end
+  self.unit = nil
+  if self.c.gateUntilFull then
+    self.unit = gt.proxy(self.c.unitAddress, "ozonation unit")
+  end
   self.gated = nil
   self.warned = false
   self.stats = { cycles = 0, byTier = {}, starved = 0 }
@@ -66,7 +73,7 @@ function t2:tick(started)
     end
   end
 
-  if c.gateUntilFull then
+  if c.gateUntilFull and self.unit then
     local want = level >= c.recipeTiers[#c.recipeTiers].volume
     if self.gated ~= want then
       gt.call(self.unit, "setWorkAllowed", nil, want)
