@@ -34,8 +34,8 @@ function t4.new(cfg, gt, clock)
   end
   self.baseSide = bSide
 
-  print(string.format("t4: acid from %s tank %d into %s, dust from %s into %s",
-    gt.SIDE_NAME[aSide] or aSide, aTank, gt.SIDE_NAME[self.acidSink] or self.acidSink,
+  print(string.format("t4  acid %s->%s tank %d   dust %s->%s",
+    gt.SIDE_NAME[aSide] or aSide, gt.SIDE_NAME[self.acidSink] or self.acidSink, aTank,
     gt.SIDE_NAME[bSide] or bSide, gt.SIDE_NAME[self.baseSink] or self.baseSink))
 
   self.dosed = false
@@ -126,12 +126,12 @@ function t4:tick(started)
   if diff > 0 then
     local moved
     moved, ok = self:putDust(count)
-    gt.log(self.cfg.log.verbose, "t4 cycle %d: pH %.2f, %d dust", self.clock.count, ph, moved)
+    gt.log(self.cfg.log.verbose, "t4 c%d pH %.2f +%d dust", self.clock.count, ph, moved)
   else
     local litres = count * c.litresPerStep
     local moved
     moved, ok = self:putAcid(litres)
-    gt.log(self.cfg.log.verbose, "t4 cycle %d: pH %.2f, %d L acid", self.clock.count, ph, moved)
+    gt.log(self.cfg.log.verbose, "t4 c%d pH %.2f -%s acid", self.clock.count, ph, gt.num(moved))
   end
 
   if not ok then

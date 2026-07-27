@@ -304,9 +304,24 @@ function gt.pushItems(transposer, source, sink, count, sourceSlot)
   return moved
 end
 
+function gt.num(n)
+  if type(n) ~= "number" then return tostring(n) end
+  local abs = math.abs(n)
+  if abs >= 1e9 then return string.format("%.2fG", n / 1e9) end
+  if abs >= 1e6 then return string.format("%.2fM", n / 1e6) end
+  if abs >= 1e3 then return string.format("%.1fk", n / 1e3) end
+  return tostring(math.floor(n))
+end
+
+function gt.short(text, width)
+  text = tostring(text)
+  if #text <= width then return text end
+  return text:sub(1, width - 1) .. "~"
+end
+
 function gt.log(enabled, fmt, ...)
   if not enabled then return end
-  print(string.format("[%8.1f] " .. fmt, computer.uptime(), ...))
+  print(string.format("%4ds " .. fmt, math.floor(computer.uptime()), ...))
 end
 
 return gt

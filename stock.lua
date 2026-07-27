@@ -23,7 +23,7 @@ function stock:amount(entry)
     local list = gt.call(self.me, "getFluidsInNetwork", nil)
     if type(list) ~= "table" then return nil end
     for _, f in ipairs(list) do
-      if f.label == entry.label or f.name == entry.name then return f.amount or 0 end
+      if f.label == entry.label or f.name == entry.label then return f.amount or 0 end
     end
     return 0
   end
@@ -47,7 +47,7 @@ end
 
 function stock:request(entry, count)
   local gt = self.gt
-  local list = gt.call(self.me, "getCraftables", nil, entry.filter)
+  local list = gt.call(self.me, "getCraftables", nil, entry.craftFilter or entry.filter)
   if type(list) ~= "table" or #list == 0 then
     self.stats.noPattern = self.stats.noPattern + 1
     gt.log(true, "stock: no craftable pattern matches %s, run craftables.lua", entry.key)

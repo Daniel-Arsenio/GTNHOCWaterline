@@ -59,14 +59,15 @@ function power:report()
   end
 
   local budget, n = self:budget(), self:parallels()
-  print(string.format("power: %d EU/t usable after reserve", math.floor(budget)))
-  print(string.format("power: %d EU/t per parallel across %d unit(s)", math.floor(per), #self.units))
-  print(string.format("power: set every unit to %d parallels", n))
-  print(string.format("power: draw %d EU/t, headroom %d EU/t",
-    math.floor(n * per), math.floor(budget - n * per)))
+  local names = {}
   for _, u in ipairs(self.units) do
-    print(string.format("  %s %-3s %d EU/t", u.name, u.tier, math.floor(u.draw * n)))
+    names[#names + 1] = u.name .. ":" .. u.tier
   end
+
+  print(string.format("power  %s usable  %s per parallel  %s",
+    self.gt.num(budget), self.gt.num(per), table.concat(names, " ")))
+  print(string.format("power  SET EVERY UNIT TO %d PARALLELS  draw %s  spare %s",
+    n, self.gt.num(n * per), self.gt.num(budget - n * per)))
 end
 
 function power:tick(started)

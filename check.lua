@@ -5,89 +5,86 @@ local component = require("component")
 
 local TARGETS = {
   { "cycleAddress", cfg.cycleAddress, "getWorkProgress" },
-  { "stock.interfaceAddress", cfg.stock.interfaceAddress, "getCraftables" },
-  { "t2.interfaceAddress", cfg.t2.interfaceAddress, "getFluidsInNetwork" },
-  { "t1.unitAddress", cfg.t1.unitAddress, "isMachineActive" },
-  { "t2.unitAddress", cfg.t2.unitAddress, "isMachineActive" },
-  { "t4.unitAddress", cfg.t4.unitAddress, "getSensorInformation" },
-  { "t3.transposerAddress", cfg.t3.transposerAddress, "transferFluid" },
-  { "t4.acid.transposerAddress", cfg.t4.acid.transposerAddress, "transferFluid" },
-  { "t4.base.transposerAddress", cfg.t4.base.transposerAddress, "transferItem" },
+  { "stock.interface", cfg.stock.interfaceAddress, "getCraftables" },
+  { "t2.interface", cfg.t2.interfaceAddress, "getFluidsInNetwork" },
+  { "watch.interface", cfg.watch.interfaceAddress, "getFluidsInNetwork" },
+  { "t1.unit", cfg.t1.unitAddress, "hasWork" },
+  { "t2.unit", cfg.t2.unitAddress, "hasWork" },
+  { "t3.unit", cfg.t3.unitAddress, "getSensorInformation" },
+  { "t4.unit", cfg.t4.unitAddress, "getSensorInformation" },
+  { "t3.transposer", cfg.t3.transposerAddress, "transferFluid" },
+  { "t4.acid.transposer", cfg.t4.acid.transposerAddress, "transferFluid" },
+  { "t4.base.transposer", cfg.t4.base.transposerAddress, "transferItem" },
 }
 
-local SAFE_CALL = {
-  getWorkProgress = true,
-  getCraftables = true,
-  getFluidsInNetwork = true,
-  isMachineActive = true,
-  getSensorInformation = true,
+local SAFE = {
+  getWorkProgress = true, getCraftables = true,
+  getFluidsInNetwork = true, hasWork = true, getSensorInformation = true,
 }
 
-local function report(field, address, method)
-  if address == nil or address == "" then
-    print(string.format("%-28s not set", field))
-    return
-  end
-
-  local resolved = address
-  if #address < 36 then
-    local ok, full, reason = pcall(component.get, address)
-    if not ok or type(full) ~= "string" then
-      print(string.format("%-28s %-10s UNRESOLVED %s", field, address, tostring(full or reason)))
-      return
-    end
-    resolved = full
-  end
-
-  local ctype = "unknown"
-  local okType, t = pcall(component.type, resolved)
-  if okType and type(t) == "string" then ctype = t end
-
-  local ok, dev, reason = pcall(component.proxy, resolved)
-  if not ok then
-    print(string.format("%-28s %-10s %-14s DRIVER THREW %s",
-      field, resolved:sub(1, 8), ctype, tostring(dev)))
-    return
-  end
-  if dev == nil then
-    print(string.format("%-28s %-10s %-14s NO PROXY %s",
-      field, resolved:sub(1, 8), ctype, tostring(reason)))
-    return
-  end
-
-  local methods = gt.methods(resolved)
-  if dev[method] == nil and methods[method] == nil then
-    local names = {}
-    for name in pairs(methods) do names[#names + 1] = name end
-    table.sort(names)
-    print(string.format("%-28s %-10s %-14s MISSING %s, has: %s",
-      field, resolved:sub(1, 8), ctype, method, table.concat(names, " ")))
-    return
-  end
-
-  if SAFE_CALL[method] then
-    local called, result = pcall(dev[method])
-    if not called then
-      print(string.format("%-28s %-10s %-14s %s THREW %s",
-        field, resolved:sub(1, 8), ctype, method, tostring(result)))
-      return
-    end
-    local shown
-    if type(result) == "table" then
-      shown = #result .. " entries"
-    else
-      shown = tostring(result)
-    end
-    print(string.format("%-28s %-10s %-14s ok, %s = %s",
-      field, resolved:sub(1, 8), ctype, method, shown))
-    return
-  end
-
-  print(string.format("%-28s %-10s %-14s ok, %s present",
-    field, resolved:sub(1, 8), ctype, method))
+local function first(address)
+  if type(address) == "table" then return address[1] end
+  return address
 end
 
-print(string.format("%-28s %-10s %-14s %s", "field", "prefix", "type", "result"))
+local rows, unset = {}, {}
+
 for _, t in ipairs(TARGETS) do
-  report(t[1], t[2], t[3])
+  local field, address, method = t[1], first(t[2]), t[3]
+
+  if address == nil or address == "" then
+    unset[#unset + 1] = field
+  else
+    local resolved, ctype, result = address, "-", nil
+
+    if #address < 36 then
+      local ok, full = pcall(component.get, address)
+      if ok and type(full) == "string" then resolved = full else resolved = nil end
+    end
+
+    if resolved == nil then
+      result = "UNRESOLVED"
+    else
+      local okT, t2 = pcall(component.type, resolved)
+      if okT and type(t2) == "string" then ctype = t2 end
+
+      local ok, dev = pcall(component.proxy, resolved)
+      if not ok then
+        result = "DRIVER THREW"
+      elseif dev == nil then
+        result = "NO PROXY"
+      elseif dev[method] == nil and gt.methods(resolved)[method] == nil then
+        result = "MISSING " .. method
+      elseif SAFE[method] then
+        local called, value = pcall(dev[method])
+        if not called then
+          result = method .. " THREW"
+        elseif type(value) == "table" then
+          result = string.format("ok  %s=%d", method, #value)
+        else
+          result = string.format("ok  %s=%s", method, tostring(value))
+        end
+      else
+        result = "ok  " .. method
+      end
+    end
+
+    rows[#rows + 1] = { field, address:sub(1, 8), ctype, result }
+  end
+end
+
+if cfg.__issues and #cfg.__issues > 0 then
+  print("config.lua has " .. #cfg.__issues .. " unrecognised key(s):")
+  print("  " .. table.concat(cfg.__issues, " "))
+  print("")
+end
+
+print(string.format("%-19s %-9s %-16s %s", "field", "prefix", "type", "result"))
+for _, r in ipairs(rows) do
+  print(string.format("%-19s %-9s %-16s %s", r[1], r[2], r[3], r[4]))
+end
+
+if #unset > 0 then
+  print("")
+  print("unset: " .. table.concat(unset, " "))
 end

@@ -22,33 +22,26 @@ local function amountOf(entry)
 end
 
 local function craftable(entry)
-  local list = gt.call(me, "getCraftables", nil, entry.filter)
-  if type(list) ~= "table" then return "error" end
-  if #list == 0 then return "NO PATTERN" end
-  return "yes (" .. #list .. ")"
+  local list = gt.call(me, "getCraftables", nil, entry.craftFilter or entry.filter)
+  if type(list) ~= "table" then return "err" end
+  if #list == 0 then return "NONE" end
+  return "yes"
 end
 
-print("stock.enabled = " .. tostring(cfg.stock.enabled))
-print("")
-print(string.format("%-24s %-6s %12s %12s %-12s %s",
-  "entry", "kind", "in network", "target", "craftable", "mode"))
+print("stock " .. (cfg.stock.enabled and "ENABLED" or "disabled"))
+print(string.format("%-22s %9s %9s %-5s %-6s %s",
+  "entry", "network", "target", "craft", "mode", ""))
 
 for _, entry in ipairs(cfg.stock.entries) do
   local have = amountOf(entry)
-  local mode = entry.alarmOnly and "alarm only" or "auto craft"
-  local state = ""
-
-  if have == nil then
-    state = "UNREADABLE"
-  elseif have < entry.target then
-    state = "BELOW TARGET"
-  end
-
-  print(string.format("%-24s %-6s %12s %12s %-12s %s %s",
-    entry.key, entry.kind, tostring(have), tostring(entry.target),
-    craftable(entry), mode, state))
+  print(string.format("%-22s %9s %9s %-5s %-6s %s",
+    gt.short(entry.key, 22),
+    have == nil and "?" or gt.num(have),
+    gt.num(entry.target),
+    craftable(entry),
+    entry.alarmOnly and "alarm" or "craft",
+    (have ~= nil and have < entry.target) and "LOW" or ""))
 end
 
 print("")
-print("a NO PATTERN entry can never be requested, check the filter with craftables.lua")
-print("network levels only, buffer tanks and interfaces are checked by t3 and t4")
+print("NONE means it can never be requested, fix filter with craftables.lua")

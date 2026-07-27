@@ -18,7 +18,7 @@ end
 
 local function validate(defaults, user, path, problems)
   for key, value in pairs(user) do
-    if type(key) ~= "number" then
+    if type(key) ~= "number" and key ~= "__issues" then
       local here = path == "" and tostring(key) or (path .. "." .. tostring(key))
       if defaults[key] == nil then
         problems[#problems + 1] = here
@@ -41,14 +41,8 @@ end
 local problems = {}
 validate(cfg, user, "", problems)
 
-if #problems > 0 then
-  table.sort(problems)
-  print("settings: " .. #problems .. " setting(s) in config.lua match nothing in defaults.lua")
-  for _, key in ipairs(problems) do
-    print("  " .. key .. "  IGNORED")
-  end
-  print("settings: these do nothing. a renamed option is the usual cause.")
-end
+table.sort(problems)
 
 merge(cfg, user)
+cfg.__issues = problems
 return cfg

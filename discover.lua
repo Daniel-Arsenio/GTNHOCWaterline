@@ -1,88 +1,80 @@
+local BASE = "/home/waterline/"
+local gt = dofile(BASE .. "gtutil.lua")
 local component = require("component")
 
-local RELEVANT = setmetatable({
-  gt_machine = true,
-  transposer = true,
-}, {
-  __index = function(_, key)
-    if type(key) ~= "string" then return false end
-    return key:sub(1, 3) == "me_" or key:find("interface", 1, true) ~= nil
-  end,
-})
+local function isRelevant(ctype)
+  return ctype == "gt_machine" or ctype == "transposer"
+    or ctype:sub(1, 3) == "me_" or ctype:find("interface", 1, true) ~= nil
+end
 
 local function describe(address, ctype)
   local ok, dev = pcall(component.proxy, address)
-  if not ok then return "?" end
+  if not ok then return "unreadable" end
 
   if ctype == "gt_machine" then
     local okName, name = pcall(dev.getName)
     if okName and type(name) == "string" and #name > 0 then return name end
-    local okInfo, info = pcall(dev.getSensorInformation)
-    if okInfo and type(info) == "table" and info[1] then
-      return (info[1]:gsub("\194\167.", ""):gsub("\167.", ""))
-    end
+    local info = gt.sensor(dev)
+    return info[1] or ctype
   end
 
   if ctype:sub(1, 3) == "me_" or ctype:find("interface", 1, true) then
-    local bits = {}
-    local function try(method)
-      local ok, result = pcall(dev[method])
-      if ok and type(result) == "table" then return tostring(#result) end
-      return "no"
+    local function count(method)
+      local okC, r = pcall(dev[method])
+      return (okC and type(r) == "table") and #r or "-"
     end
-    bits[#bits + 1] = "craftables=" .. try("getCraftables")
-    bits[#bits + 1] = "fluids=" .. try("getFluidsInNetwork")
-    bits[#bits + 1] = "cpus=" .. try("getCpus")
-    return table.concat(bits, " ")
+    return string.format("craft=%s fluids=%s cpus=%s",
+      count("getCraftables"), count("getFluidsInNetwork"), count("getCpus"))
   end
 
   if ctype == "transposer" then
-    local names = { [0] = "bottom", "top", "north", "south", "west", "east" }
-    local seen = {}
+    local bits = {}
     for side = 0, 5 do
-      local bits = {}
-      local tanks = 0
-      local okCount, count = pcall(dev.getTankCount, side)
-      if okCount and type(count) == "number" then tanks = count end
-      for tank = 1, tanks do
-        local okT, fluid = pcall(dev.getFluidInTank, side, tank)
-        if okT and type(fluid) == "table" and (fluid.capacity or 0) > 0 then
-          bits[#bits + 1] = string.format("%s %d/%d",
-            fluid.name or "empty", fluid.amount or 0, fluid.capacity or 0)
+      local okC, tanks = pcall(dev.getTankCount, side)
+      for tank = 1, (okC and tanks or 0) do
+        local okT, f = pcall(dev.getFluidInTank, side, tank)
+        if okT and type(f) == "table" and (f.capacity or 0) > 0 then
+          bits[#bits + 1] = string.format("%s(%d) %s %s/%s", gt.SIDE_NAME[side], side,
+            gt.short(f.name or "empty", 22), gt.num(f.amount or 0), gt.num(f.capacity))
         end
       end
       local okS, stacks = pcall(dev.getAllStacks, side)
-      if okS and stacks ~= nil then bits[#bits + 1] = "inventory" end
-      if #bits > 0 then
-        seen[#seen + 1] = names[side] .. "(" .. side .. ")=" .. table.concat(bits, ",")
+      if okS and stacks ~= nil then
+        bits[#bits + 1] = string.format("%s(%d) inv", gt.SIDE_NAME[side], side)
       end
     end
-    if #seen > 0 then return table.concat(seen, " ") end
+    return #bits > 0 and table.concat(bits, "  ") or "nothing attached"
   end
 
   return ctype
 end
 
-local rows = {}
+local rows, others = {}, {}
+
 for address, ctype in component.list() do
-  rows[#rows + 1] = {
-    address = address,
-    ctype = ctype,
-    info = RELEVANT[ctype] and describe(address, ctype) or "",
-    mark = RELEVANT[ctype] and "*" or " ",
-  }
+  if isRelevant(ctype) then
+    rows[#rows + 1] = { a = address, t = ctype, d = describe(address, ctype) }
+  else
+    others[ctype] = (others[ctype] or 0) + 1
+  end
 end
 
 table.sort(rows, function(a, b)
-  if a.ctype ~= b.ctype then return a.ctype < b.ctype end
-  return a.address < b.address
+  if a.t ~= b.t then return a.t < b.t end
+  return a.d < b.d
 end)
 
-print(string.format("  %-8s %-14s %s", "prefix", "type", "identity"))
+print(string.format("%-9s %-16s %s", "prefix", "type", "identity"))
 for _, r in ipairs(rows) do
-  print(string.format("%s %-8s %-14s %s", r.mark, r.address:sub(1, 8), r.ctype, r.info))
+  print(string.format("%-9s %-16s %s", r.a:sub(1, 8), r.t, r.d))
 end
+
+local list = {}
+for ctype, n in pairs(others) do
+  list[#list + 1] = ctype .. (n > 1 and ("x" .. n) or "")
+end
+table.sort(list)
+
 print("")
-print(#rows .. " components, * marks ones this program can use")
-print("paste the prefix into config.lua, it does not need the full address")
-print("a missing me_interface usually means an MFU is sitting in that adapter")
+print("other: " .. table.concat(list, " "))
+print("paste any prefix into config.lua, full addresses are not needed")

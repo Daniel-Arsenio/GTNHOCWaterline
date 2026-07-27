@@ -16,6 +16,12 @@ local function build(name)
   return instance
 end
 
+if cfg.__issues and #cfg.__issues > 0 then
+  print(#cfg.__issues .. " setting(s) in config.lua match nothing in defaults.lua:")
+  for _, key in ipairs(cfg.__issues) do print("  " .. key) end
+  print("they are ignored. a renamed option is the usual cause.")
+end
+
 local modules = {}
 for _, name in ipairs({ "power", "stock", "watch", "t2", "t3", "t4", "ui" }) do
   if cfg[name] and cfg[name].enabled then

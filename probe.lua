@@ -8,8 +8,8 @@ local function dumpMachine(label, address)
   print("=== machine " .. label .. " " .. address)
   local ok, machine = pcall(gt.proxy, address, label)
   if not ok then print("  " .. tostring(machine)) return end
-  print(string.format("  active=%s progress=%s max=%s allowed=%s",
-    tostring(gt.call(machine, "isMachineActive", "n/a")),
+  print(string.format("  work=%s progress=%s/%s allowed=%s",
+    tostring(gt.call(machine, "hasWork", "n/a")),
     tostring(gt.call(machine, "getWorkProgress", "n/a")),
     tostring(gt.call(machine, "getWorkMaxProgress", "n/a")),
     tostring(gt.call(machine, "isWorkAllowed", "n/a"))))
@@ -24,7 +24,19 @@ local function dumpMachine(label, address)
     names[#names + 1] = name
   end
   table.sort(names)
-  print("  methods: " .. (#names > 0 and table.concat(names, ", ") or "none reported"))
+  if #names == 0 then
+    print("  methods: none reported")
+  else
+    local line = "  methods:"
+    for _, name in ipairs(names) do
+      if #line + #name + 1 > 78 then
+        print(line)
+        line = "   "
+      end
+      line = line .. " " .. name
+    end
+    print(line)
+  end
   print("")
 end
 

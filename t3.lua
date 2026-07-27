@@ -36,8 +36,9 @@ function t3.new(cfg, gt, clock)
   end
 
   self.source, self.tank = side, tank
-  print(string.format("t3: flocculant from %s tank %d (%d L), into %s",
-    gt.SIDE_NAME[side] or side, tank, amount or 0, gt.SIDE_NAME[self.sink] or self.sink))
+  print(string.format("t3  %s tank %d (%s) -> %s",
+    gt.SIDE_NAME[side] or side, tank, gt.num(amount or 0),
+    gt.SIDE_NAME[self.sink] or self.sink))
 
   self.charged = false
   self.stats = { cycles = 0, charged = 0, short = 0 }
@@ -139,7 +140,7 @@ function t3:tick(started)
       self.clock.count, want, moved)
   else
     self.stats.charged = self.stats.charged + 1
-    gt.log(self.cfg.log.verbose, "t3 cycle %d: charged %d L", self.clock.count, moved)
+    gt.log(self.cfg.log.verbose, "t3 c%d charged %s", self.clock.count, gt.num(moved))
   end
 end
 
