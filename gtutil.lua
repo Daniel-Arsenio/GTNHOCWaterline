@@ -6,21 +6,34 @@ local gt = {}
 function gt.proxy(address, label)
   label = label or "component"
   if type(address) ~= "string" or #address < 3 then
-    error(label .. ": address not configured in config.lua", 0)
+    error(label .. ": address not set in config.lua", 0)
   end
 
   local resolved = address
   if #address < 36 then
-    local ok, full = pcall(component.get, address)
-    if not ok or type(full) ~= "string" then
-      error(label .. ': no unique component matches "' .. address .. '"', 0)
+    local ok, full, reason = pcall(component.get, address)
+    if not ok then
+      error(string.format("%s: resolving %q raised %s", label, address, tostring(full)), 0)
+    end
+    if type(full) ~= "string" then
+      error(string.format("%s: no unique component matches %q (%s)",
+        label, address, tostring(reason)), 0)
     end
     resolved = full
   end
 
-  local ok, dev = pcall(component.proxy, resolved)
-  if not ok or not dev then
-    error(label .. ": cannot proxy " .. resolved, 0)
+  local ctype = "unknown"
+  local okType, t = pcall(component.type, resolved)
+  if okType and type(t) == "string" then ctype = t end
+
+  local ok, dev, reason = pcall(component.proxy, resolved)
+  if not ok then
+    error(string.format("%s: the %s driver at %s threw: %s",
+      label, ctype, resolved:sub(1, 8), tostring(dev)), 0)
+  end
+  if dev == nil then
+    error(string.format("%s: %s is a %s and could not be proxied: %s",
+      label, resolved:sub(1, 8), ctype, tostring(reason)), 0)
   end
   return dev
 end
