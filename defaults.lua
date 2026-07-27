@@ -5,7 +5,10 @@ return {
   log = { verbose = true },
 
   cycleAddress = "",
-  cycleSeconds = 120,
+
+  cycle = {
+    seconds = 120,
+  },
 
   power = {
     enabled = true,
@@ -74,7 +77,16 @@ return {
 
   watch = {
     enabled = true,
+    mode = "network",
     repeatEvery = 5,
+    staleCycles = 3,
+    interfaceAddress = { "" },
+    fluids = {
+      { key = "grade 1", label = "Grade 1 Purified Water" },
+      { key = "grade 2", label = "Grade 2 Purified Water" },
+      { key = "grade 3", label = "Grade 3 Purified Water" },
+      { key = "grade 4", label = "Grade 4 Purified Water" },
+    },
   },
 
   t1 = {
@@ -101,31 +113,32 @@ return {
     enabled = true,
     unitAddress = "",
     transposerAddress = "",
-    sourceSide = sides.down,
-    hatchSide = sides.up,
+    sinkSide = "up",
+    fluidName = "polyaluminiumchloride",
     targetVolume = 900000,
-    fillWindow = 4.0,
+    stepVolume = 100000,
+    consumedLine = 4,
+    consumedPrefix = "Polyaluminium Chloride consumed this cycle:",
+    haltWhenShort = true,
   },
 
   t4 = {
     enabled = true,
     unitAddress = "",
     targetPh = 7.0,
-    deadband = 0.005,
     litresPerStep = 10,
-    minSanePh = 0.5,
-    maxSanePh = 13.5,
-    doseInterval = 1.1,
+    phLine = 4,
+    phPrefix = "Current pH Value:",
+    haltWhenShort = true,
     acid = {
       transposerAddress = "",
-      sourceSide = sides.down,
-      hatchSide = sides.up,
+      sinkSide = "bottom",
+      fluidName = "hydrochloricacid_gt5u",
     },
     base = {
       transposerAddress = "",
-      sourceSide = sides.down,
-      busSide = sides.up,
-      sourceSlot = 1,
+      sinkSide = "bottom",
+      itemLabel = "Sodium Hydroxide Dust",
     },
   },
 }

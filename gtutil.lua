@@ -51,6 +51,50 @@ function gt.proxy(address, label)
   return dev
 end
 
+function gt.machines()
+  local out = {}
+  for address, ctype in component.list("gt_machine") do
+    local ok, dev = pcall(component.proxy, address)
+    if ok and dev then
+      local okName, name = pcall(dev.getName)
+      out[#out + 1] = {
+        address = address,
+        proxy = dev,
+        name = (okName and type(name) == "string") and name or "",
+      }
+    end
+  end
+  return out
+end
+
+function gt.findMachine(name)
+  if type(name) ~= "string" or name == "" then return nil end
+  local exact, fuzzy = nil, nil
+  for _, m in ipairs(gt.machines()) do
+    if m.name == name then
+      exact = m
+      break
+    elseif fuzzy == nil and m.name:lower():find(name:lower(), 1, true) then
+      fuzzy = m
+    end
+  end
+  local hit = exact or fuzzy
+  if hit then return hit.proxy, hit.address, hit.name end
+  return nil
+end
+
+function gt.machineFor(address, pattern, label)
+  if type(address) == "string" and #address >= 3 then
+    return gt.proxy(address, label), address
+  end
+  local proxy, found, name = gt.findMachine(pattern)
+  if proxy then
+    print(string.format("%s: matched %s by name (%s)", label, found:sub(1, 8), name))
+    return proxy, found
+  end
+  return nil
+end
+
 function gt.network(addresses, method, label)
   if type(addresses) == "string" then addresses = { addresses } end
   if type(addresses) ~= "table" or #addresses == 0 then
@@ -74,6 +118,22 @@ function gt.network(addresses, method, label)
   error(label .. ": no candidate answers " .. method .. " (" .. table.concat(notes, "; ") .. ")", 0)
 end
 
+local function escapePattern(text)
+  return (text:gsub("([%().%%%+%-%*%?%[%^%$%]])", "%%%1"))
+end
+
+gt.MACHINE = {
+  plant = "multimachine.purificationplant",
+  t1 = "multimachine.purificationunitclarifier",
+  t2 = "multimachine.purificationunitozonation",
+  t3 = "multimachine.purificationunitflocculator",
+  t4 = "multimachine.purificationunitphadjustment",
+  t5 = "multimachine.purificationunitplasmaheater",
+  t6 = "multimachine.purificationunituvtreatment",
+  t7 = "multimachine.purificationunitdegasifier",
+  t8 = "multimachine.purificationunitextractor",
+}
+
 function gt.clean(text)
   if type(text) ~= "string" then return "" end
   return (text:gsub("\194\167.", ""):gsub("\167.", ""))
@@ -85,6 +145,21 @@ function gt.sensor(machine)
   local out = {}
   for i = 1, #info do out[i] = gt.clean(info[i]) end
   return out
+end
+
+function gt.lineNumber(info, line, prefix)
+  local data = info[line]
+  if type(data) ~= "string" then return nil end
+  if prefix then data = data:gsub(escapePattern(prefix), "") end
+  data = gt.clean(data):gsub(",", "")
+  return tonumber(data:match("([%d%.]+)"))
+end
+
+function gt.lineString(info, line, prefix)
+  local data = info[line]
+  if type(data) ~= "string" then return nil end
+  if prefix then data = data:gsub(escapePattern(prefix), "") end
+  return gt.clean(data)
 end
 
 function gt.matchNumber(info, pattern)
@@ -118,9 +193,47 @@ function gt.tankTotals(transposer, side)
   return amount, capacity
 end
 
-function gt.pushFluid(transposer, source, sink, want)
+function gt.findFluid(transposer, fluidName, ignore)
+  ignore = ignore or {}
+  for side = 0, 5 do
+    if not ignore[side] then
+      local tanks = gt.call(transposer, "getTankCount", 0, side) or 0
+      for tank = 1, tanks do
+        local fluid = gt.call(transposer, "getFluidInTank", nil, side, tank)
+        if type(fluid) == "table" and type(fluid.name) == "string"
+           and fluid.name:find(fluidName, 1, true) then
+          return side, tank
+        end
+      end
+    end
+  end
+  return nil
+end
+
+function gt.findItem(transposer, label, ignore)
+  ignore = ignore or {}
+  for side = 0, 5 do
+    if not ignore[side] then
+      local stacks = gt.call(transposer, "getAllStacks", nil, side)
+      if stacks ~= nil then
+        local ok, all = pcall(stacks.getAll)
+        if ok and type(all) == "table" then
+          for index, slot in pairs(all) do
+            if type(slot) == "table" and type(slot.label) == "string"
+               and slot.label:find(label, 1, true) then
+              return side, index + 1
+            end
+          end
+        end
+      end
+    end
+  end
+  return nil
+end
+
+function gt.pushFluid(transposer, source, sink, want, tank)
   if want <= 0 then return 0 end
-  local ok, moved = transposer.transferFluid(source, sink, want)
+  local ok, moved = transposer.transferFluid(source, sink, want, tank)
   if ok ~= true then return 0 end
   if type(moved) ~= "number" then return want end
   return moved

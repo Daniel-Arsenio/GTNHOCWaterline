@@ -9,7 +9,7 @@ function t2.new(cfg, gt, clock)
   self.me = gt.network(address, "getFluidsInNetwork", "t2.interfaceAddress")
   self.unit = nil
   if self.c.gateUntilFull then
-    self.unit = gt.proxy(self.c.unitAddress, "ozonation unit")
+    self.unit = gt.machineFor(self.c.unitAddress, gt.MACHINE.t2, "ozonation unit")
   end
   self.gated = nil
   self.warned = false
