@@ -78,9 +78,13 @@ function t3:tick(started)
     if warn > 0 then
       local fluid = gt.call(self.trans, "getFluidInTank", nil, self.source, self.tank)
       local have = type(fluid) == "table" and (fluid.amount or 0) or 0
-      if have < warn then
-        gt.warn("t3: buffer down to %d L, %.1f cycles left, check the export bus",
-          have, have / c.targetVolume)
+      if have < warn and not self.bufferWarned then
+        self.bufferWarned = true
+        gt.warn("t3 buffer %s, %.1f charges left, check the export bus",
+          gt.num(have), have / c.targetVolume)
+      elseif have >= warn and self.bufferWarned then
+        self.bufferWarned = false
+        gt.info(self.cfg.log.verbose, "t3 buffer recovered to %s", gt.num(have))
       end
     end
   end

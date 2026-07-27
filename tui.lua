@@ -4,18 +4,23 @@ local tui = {}
 
 local gpu = component.isAvailable("gpu") and component.gpu or nil
 
+-- Mediterranean palette. Body text and values sit in the foam whites, structure in the
+-- blues, state in the sea greens, and only the two things you must act on break out into
+-- sand and coral. Every foreground is checked for contrast against the deep navy ground.
 tui.c = {
-  text   = 0xC0C0C0,
-  bright = 0xFFFFFF,
-  dim    = 0x6A6A6A,
-  head   = 0x5FC9F8,
-  rule   = 0x2F4F5F,
-  ok     = 0x4CD964,
-  warn   = 0xFFC300,
-  bad    = 0xFF5A5A,
-  key    = 0x8FA8FF,
-  val    = 0xE8E8E8,
-  accent = 0xFF9F0A,
+  ground = 0x011627,  -- deep water, screen background
+  rule   = 0x2A6F97,  -- mediterranean blue, dividers
+  head   = 0x48CAE4,  -- shallow water cyan, headers
+  key    = 0x5FA8D3,  -- azure, field and column names
+  text   = 0xCAE9F5,  -- sea foam, body text
+  val    = 0xEAF6FB,  -- foam white, values
+  bright = 0xFFFFFF,  -- surf white, emphasis
+  dim    = 0x6E93A3,  -- wet slate, recessive context
+  ok     = 0x2EC4B6,  -- turquoise, healthy
+  cool   = 0x00B4D8,  -- azure, informational highlight
+  warn   = 0xE9C46A,  -- sand, degraded but running
+  bad    = 0xE76F51,  -- terracotta, failure
+  accent = 0xF4A261,  -- sunset, the one thing to act on
 }
 
 function tui.width()
@@ -39,6 +44,22 @@ end
 
 function tui.set(colour)
   if gpu then gpu.setForeground(colour) end
+end
+
+function tui.theme()
+  if gpu == nil then return end
+  local w, h = gpu.getResolution()
+  tui.previousBackground = gpu.setBackground(tui.c.ground)
+  gpu.setForeground(tui.c.text)
+  gpu.fill(1, 1, w, h, " ")
+end
+
+function tui.untheme()
+  if gpu == nil then return end
+  local w, h = gpu.getResolution()
+  gpu.setBackground(tui.previousBackground or 0x000000)
+  gpu.setForeground(0xFFFFFF)
+  gpu.fill(1, 1, w, h, " ")
 end
 
 function tui.reset()

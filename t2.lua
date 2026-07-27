@@ -57,15 +57,19 @@ function t2:tick(started)
       self.stats.byTier[tier] = self.stats.byTier[tier] + 1
     else
       self.stats.starved = self.stats.starved + 1
-      gt.warn("t2 cycle %d: only %d L Ozone in the network, below the smallest recipe",
-        self.clock.count, level)
+      gt.warn("t2 c%d only %s ozone, below the smallest recipe", self.clock.count, gt.num(level))
     end
 
     if buffer < (c.minBufferCycles or 2) then
-      gt.warn("t2 cycle %d: %d L Ozone left, %.1f full charges, engravers are behind",
-        self.clock.count, level, buffer)
-    elseif self.cfg.log.verbose then
-      gt.warn("t2 cycle %d: %d L Ozone, %.1f full charges buffered", self.clock.count, level, buffer)
+      if not self.bufferWarned then
+        self.bufferWarned = true
+        gt.warn("t2 c%d ozone %s, %.1f charges, engravers are behind",
+          self.clock.count, gt.num(level), buffer)
+      end
+    else
+      self.bufferWarned = false
+      gt.info(self.cfg.log.verbose, "t2 c%d ozone %s, %.1f charges",
+        self.clock.count, gt.num(level), buffer)
     end
   end
 

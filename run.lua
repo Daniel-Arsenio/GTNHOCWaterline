@@ -7,6 +7,7 @@ local gt = dofile(BASE .. "gtutil.lua")
 local tui = gt.tui
 
 if cfg.ui and cfg.ui.maximise then tui.maximise() end
+if cfg.ui and cfg.ui.theme then tui.theme() end
 tui.header("waterline", "grades 1 to 4")
 local clock = dofile(BASE .. "cycle.lua").new(cfg, gt)
 
@@ -72,6 +73,8 @@ while true do
     tui.rule()
     tui.line(tui.c.head, "cycle " .. clock.count)
     for _, m in ipairs(modules) do tui.line(tui.c.text, "  " .. m.impl:status()) end
+
+if cfg.ui and cfg.ui.theme and cfg.ui.restoreOnExit then tui.untheme() end
     tui.rule()
     nextStatus = computer.uptime() + 300
   end
@@ -79,5 +82,12 @@ while true do
   if event.pull(cfg.pollInterval, "interrupted") then break end
 end
 
-print(string.format("stopped after %d cycles", clock.count))
-for _, m in ipairs(modules) do print("  " .. m.impl:status()) end
+for _, m in ipairs(modules) do
+  if m.impl.shutdown then pcall(m.impl.shutdown, m.impl) end
+end
+
+tui.rule()
+tui.line(tui.c.head, string.format("stopped after %d cycles", clock.count))
+for _, m in ipairs(modules) do tui.line(tui.c.text, "  " .. m.impl:status()) end
+
+if cfg.ui and cfg.ui.theme and cfg.ui.restoreOnExit then tui.untheme() end

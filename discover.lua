@@ -27,7 +27,7 @@ local function describe(address, ctype)
       return (okC and type(r) == "table") and #r or "-"
     end
     return string.format("craftables %s   fluids %s   cpus %s",
-      count("getCraftables"), count("getFluidsInNetwork"), count("getCpus")), tui.c.ok
+      count("getCraftables"), count("getFluidsInNetwork"), count("getCpus")), tui.c.cool
   end
 
   if ctype == "transposer" then

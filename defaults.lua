@@ -14,6 +14,8 @@ return {
     enabled = true,
     mode = "pinned",
     maximise = true,
+    theme = true,
+    restoreOnExit = false,
     barWidth = false,
     minInterval = 0.5,
   },

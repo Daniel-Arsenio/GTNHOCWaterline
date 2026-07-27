@@ -28,7 +28,7 @@ local function craftable(entry)
   return "yes", tui.c.ok
 end
 
-tui.header("supply levels", cfg.stock.enabled and "stock ENABLED" or "stock disabled")
+tui.header("supply levels", cfg.stock.enabled and "stock enabled" or "stock disabled")
 
 tui.write(tui.c.dim, tui.pad("entry", 24) .. tui.pad("network", 11, true)
   .. tui.pad("target", 11, true) .. "  " .. tui.pad("craft", 7) .. tui.pad("mode", 7) .. "state")

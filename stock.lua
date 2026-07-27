@@ -12,6 +12,7 @@ function stock.new(cfg, gt, clock)
   self.lastLevel = {}
   self.jobSeen = {}
   self.trend = {}
+  self.noPatternSeen = {}
   self.nextCheck = 0
   self.stats = { requested = 0, done = 0, failed = 0, noPattern = 0 }
   return self
