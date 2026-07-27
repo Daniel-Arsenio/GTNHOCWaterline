@@ -5,12 +5,22 @@ local gt = {}
 
 function gt.proxy(address, label)
   label = label or "component"
-  if type(address) ~= "string" or #address < 8 then
+  if type(address) ~= "string" or #address < 3 then
     error(label .. ": address not configured in config.lua", 0)
   end
-  local ok, dev = pcall(component.proxy, address)
+
+  local resolved = address
+  if #address < 36 then
+    local ok, full = pcall(component.get, address)
+    if not ok or type(full) ~= "string" then
+      error(label .. ': no unique component matches "' .. address .. '"', 0)
+    end
+    resolved = full
+  end
+
+  local ok, dev = pcall(component.proxy, resolved)
   if not ok or not dev then
-    error(label .. ": cannot proxy " .. tostring(address), 0)
+    error(label .. ": cannot proxy " .. resolved, 0)
   end
   return dev
 end
