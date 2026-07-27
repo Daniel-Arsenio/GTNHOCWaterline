@@ -136,10 +136,8 @@ function t4:tick(started)
 
   if not ok then
     self.stats.shortfalls = self.stats.shortfalls + 1
-    gt.warn("t4 cycle %d: ran out of reagent mid dose", self.clock.count)
-    if c.haltWhenShort then
-      gt.call(self.unit, "setWorkAllowed", nil, false)
-    end
+    gt.warn("t4 c%d ran out of reagent mid dose, this batch will miss the band",
+      self.clock.count)
   else
     self.stats.dosed = self.stats.dosed + 1
   end

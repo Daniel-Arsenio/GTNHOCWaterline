@@ -139,7 +139,9 @@ return {
     bufferWarnCycles = 3,
     consumedLine = 4,
     consumedPrefix = "Polyaluminium Chloride consumed this cycle:",
-    haltWhenShort = true,
+    topUpUntil = 0.6,
+    retryInterval = 2,
+    haltWhenShort = false,
   },
 
   t4 = {
@@ -149,7 +151,6 @@ return {
     litresPerStep = 10,
     phLine = 4,
     phPrefix = "Current pH Value:",
-    haltWhenShort = true,
     acid = {
       transposerAddress = "",
       sinkSide = "bottom",
