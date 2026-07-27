@@ -6,11 +6,7 @@ function t2.new(cfg, gt, clock)
   self.cfg, self.gt, self.clock, self.c = cfg, gt, clock, cfg.t2
   local address = self.c.interfaceAddress
   if address == nil or address == "" then address = cfg.stock.interfaceAddress end
-  self.me = gt.proxy(address, "ME interface")
-  if type(self.me.getFluidsInNetwork) ~= "function" then
-    error("component " .. address .. " has no getFluidsInNetwork, point t2.interfaceAddress" ..
-      " at an ME Interface or ME Controller", 0)
-  end
+  self.me = gt.network(address, "getFluidsInNetwork", "t2.interfaceAddress")
   self.unit = nil
   if self.c.gateUntilFull then
     self.unit = gt.proxy(self.c.unitAddress, "ozonation unit")

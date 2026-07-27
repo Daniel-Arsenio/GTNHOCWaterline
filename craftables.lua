@@ -5,7 +5,9 @@ local gt = dofile(BASE .. "gtutil.lua")
 local args = { ... }
 local needle = (args[1] or ""):lower()
 
-local me = gt.proxy(cfg.stock.interfaceAddress, "ME interface")
+local target = args[2] or cfg.stock.interfaceAddress
+local me = gt.proxy(target, "ME interface")
+print("using component " .. tostring(target))
 
 print("=== craftables matching '" .. needle .. "'")
 local craftables = gt.call(me, "getCraftables", nil)

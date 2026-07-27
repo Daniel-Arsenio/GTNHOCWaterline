@@ -1,5 +1,6 @@
 local BASE = "/home/waterline/"
 local cfg = dofile(BASE .. "settings.lua")
+local gt = dofile(BASE .. "gtutil.lua")
 local component = require("component")
 
 local TARGETS = {
@@ -54,9 +55,13 @@ local function report(field, address, method)
     return
   end
 
-  if type(dev[method]) ~= "function" then
-    print(string.format("%-28s %-10s %-14s MISSING %s",
-      field, resolved:sub(1, 8), ctype, method))
+  local methods = gt.methods(resolved)
+  if dev[method] == nil and methods[method] == nil then
+    local names = {}
+    for name in pairs(methods) do names[#names + 1] = name end
+    table.sort(names)
+    print(string.format("%-28s %-10s %-14s MISSING %s, has: %s",
+      field, resolved:sub(1, 8), ctype, method, table.concat(names, " ")))
     return
   end
 

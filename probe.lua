@@ -19,12 +19,12 @@ local function dumpMachine(label, address)
   if ph then print(string.format("  parsed pH = %.2f", ph)) end
   local par = gt.matchNumber(info, "parallel[^%d]*(%d+)")
   if par then print(string.format("  parsed parallels = %d", par)) end
-  local methods = {}
-  for k, v in pairs(machine) do
-    if type(v) == "function" then methods[#methods + 1] = k end
+  local names = {}
+  for name in pairs(gt.methods(gt.resolve(address, label))) do
+    names[#names + 1] = name
   end
-  table.sort(methods)
-  print("  methods: " .. table.concat(methods, ", "))
+  table.sort(names)
+  print("  methods: " .. (#names > 0 and table.concat(names, ", ") or "none reported"))
   print("")
 end
 

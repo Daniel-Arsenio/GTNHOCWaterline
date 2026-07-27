@@ -3,24 +3,37 @@ local computer = require("computer")
 
 local gt = {}
 
-function gt.proxy(address, label)
+function gt.resolve(address, label)
   label = label or "component"
   if type(address) ~= "string" or #address < 3 then
     error(label .. ": address not set in config.lua", 0)
   end
+  if #address >= 36 then return address end
 
-  local resolved = address
-  if #address < 36 then
-    local ok, full, reason = pcall(component.get, address)
-    if not ok then
-      error(string.format("%s: resolving %q raised %s", label, address, tostring(full)), 0)
-    end
-    if type(full) ~= "string" then
-      error(string.format("%s: no unique component matches %q (%s)",
-        label, address, tostring(reason)), 0)
-    end
-    resolved = full
+  local ok, full, reason = pcall(component.get, address)
+  if not ok then
+    error(string.format("%s: resolving %q raised %s", label, address, tostring(full)), 0)
   end
+  if type(full) ~= "string" then
+    error(string.format("%s: no unique component matches %q (%s)",
+      label, address, tostring(reason)), 0)
+  end
+  return full
+end
+
+function gt.methods(address)
+  local ok, list = pcall(component.methods, address)
+  if ok and type(list) == "table" then return list end
+  return {}
+end
+
+function gt.has(proxy, name)
+  return proxy ~= nil and proxy[name] ~= nil
+end
+
+function gt.proxy(address, label)
+  label = label or "component"
+  local resolved = gt.resolve(address, label)
 
   local ctype = "unknown"
   local okType, t = pcall(component.type, resolved)
@@ -36,6 +49,29 @@ function gt.proxy(address, label)
       label, resolved:sub(1, 8), ctype, tostring(reason)), 0)
   end
   return dev
+end
+
+function gt.network(addresses, method, label)
+  if type(addresses) == "string" then addresses = { addresses } end
+  if type(addresses) ~= "table" or #addresses == 0 then
+    error(label .. ": no address configured", 0)
+  end
+
+  local notes = {}
+  for _, address in ipairs(addresses) do
+    if type(address) == "string" and #address >= 3 then
+      local ok, dev = pcall(gt.proxy, address, label)
+      if not ok then
+        notes[#notes + 1] = address:sub(1, 8) .. " " .. tostring(dev)
+      elseif gt.has(dev, method) then
+        return dev, address
+      else
+        notes[#notes + 1] = address:sub(1, 8) .. " has no " .. method
+      end
+    end
+  end
+
+  error(label .. ": no candidate answers " .. method .. " (" .. table.concat(notes, "; ") .. ")", 0)
 end
 
 function gt.clean(text)
@@ -64,7 +100,7 @@ end
 
 function gt.call(machine, method, default, ...)
   local fn = machine[method]
-  if type(fn) ~= "function" then return default end
+  if fn == nil then return default end
   local ok, value = pcall(fn, ...)
   if not ok then return default end
   return value

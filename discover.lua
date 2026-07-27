@@ -1,11 +1,13 @@
 local component = require("component")
 
-local RELEVANT = {
+local RELEVANT = setmetatable({
   gt_machine = true,
   transposer = true,
-  me_interface = true,
-  me_controller = true,
-}
+}, {
+  __index = function(_, key)
+    return type(key) == "string" and key:sub(1, 3) == "me_"
+  end,
+})
 
 local function describe(address, ctype)
   local ok, dev = pcall(component.proxy, address)
@@ -18,6 +20,19 @@ local function describe(address, ctype)
     if okInfo and type(info) == "table" and info[1] then
       return (info[1]:gsub("\194\167.", ""):gsub("\167.", ""))
     end
+  end
+
+  if ctype:sub(1, 3) == "me_" then
+    local bits = {}
+    local function try(method)
+      local ok, result = pcall(dev[method])
+      if ok and type(result) == "table" then return tostring(#result) end
+      return "no"
+    end
+    bits[#bits + 1] = "craftables=" .. try("getCraftables")
+    bits[#bits + 1] = "fluids=" .. try("getFluidsInNetwork")
+    bits[#bits + 1] = "cpus=" .. try("getCpus")
+    return table.concat(bits, " ")
   end
 
   if ctype == "transposer" then

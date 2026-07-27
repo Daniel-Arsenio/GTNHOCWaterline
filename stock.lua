@@ -6,12 +6,7 @@ stock.__index = stock
 function stock.new(cfg, gt, clock)
   local self = setmetatable({}, stock)
   self.cfg, self.gt, self.clock, self.c = cfg, gt, clock, cfg.stock
-  self.me = gt.proxy(self.c.interfaceAddress, "ME interface")
-  if type(self.me.getItemsInNetwork) ~= "function" then
-    local kind = tostring(self.me.type or "unknown")
-    error("component " .. self.c.interfaceAddress .. " is a " .. kind ..
-      " and has no getItemsInNetwork, point this at an ME Interface or ME Controller", 0)
-  end
+  self.me, self.address = gt.network(self.c.interfaceAddress, "getItemsInNetwork", "stock.interfaceAddress")
   self.jobs = {}
   self.alarmed = {}
   self.lastLevel = {}

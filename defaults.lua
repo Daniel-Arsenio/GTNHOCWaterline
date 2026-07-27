@@ -5,6 +5,7 @@ return {
   log = { verbose = true },
 
   cycleAddress = "",
+  cycleSeconds = 120,
 
   power = {
     enabled = true,
@@ -23,7 +24,7 @@ return {
 
   stock = {
     enabled = false,
-    interfaceAddress = "",
+    interfaceAddress = { "" },
     checkInterval = 10,
     reserveCpus = 1,
     consumptionTolerance = 0.5,

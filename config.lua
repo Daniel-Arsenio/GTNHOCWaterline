@@ -9,7 +9,7 @@ return {
 
   stock = {
     enabled = false,
-    interfaceAddress = "",
+    interfaceAddress = { "" },
   },
 
   t1 = { unitAddress = "" },
