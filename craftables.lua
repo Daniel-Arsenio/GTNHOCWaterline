@@ -1,6 +1,7 @@
 local BASE = "/home/waterline/"
 local cfg = dofile(BASE .. "settings.lua")
 local gt = dofile(BASE .. "gtutil.lua")
+local tui = gt.tui
 
 local args = { ... }
 local raw = args[1] or ""
@@ -17,29 +18,45 @@ local function describe(entry)
     return { label = entry.label, name = entry.name, damage = entry.damage }
   end
 
-  if entry.getItemStack == nil then
-    return nil, "no getItemStack and no direct fields"
+  local accessor = entry.getStack or entry.getItemStack
+  if accessor == nil then
+    return nil, "no getStack, no getItemStack, no direct fields"
   end
 
-  local ok, stack = pcall(entry.getItemStack)
+  local ok, stack = pcall(accessor)
   if not ok then return nil, tostring(stack) end
-  if type(stack) ~= "table" then return nil, "getItemStack returned " .. type(stack) end
+  if type(stack) ~= "table" then return nil, "accessor returned " .. type(stack) end
   return { label = stack.label, name = stack.name, damage = stack.damage }
 end
 
-local function show(info)
-  print(string.format("  %-34s %-30s %s",
-    gt.short(tostring(info.label), 34), gt.short(tostring(info.name), 30),
-    tostring(info.damage)))
+local function show(info, extra)
+  tui.write(tui.c.dim, "  ")
+  tui.write(tui.c.bright, tui.pad(tostring(info.label), LW))
+  tui.write(tui.c.text, tui.pad(tostring(info.name), NW))
+  tui.write(tui.c.dim, tostring(extra or info.damage or ""))
+  tui.reset()
+  io.write("\n")
 end
 
-print("craftables  target " .. tostring(target):sub(1, 8) .. "  query " .. (raw ~= "" and raw or "(all)"))
-print("")
+tui.header("craftables", "target " .. tostring(target):sub(1, 8)
+  .. "   query " .. (raw ~= "" and raw or "(all)"))
+
+local LW = math.max(20, math.floor((tui.width() - 26) * 0.45))
+local NW = math.max(18, math.floor((tui.width() - 26) * 0.40))
+
+local function probe(name, detail, hits, good)
+  tui.write(tui.c.key, tui.pad(name, 10))
+  tui.write(tui.c.dim, tui.pad(detail, 26))
+  tui.write(good and tui.c.ok or tui.c.warn, hits)
+  tui.reset()
+  io.write("\n")
+end
 
 if raw ~= "" then
   local byLabel = gt.call(me, "getCraftables", nil, { label = raw })
-  print(string.format("filter   getCraftables{label}     %s",
-    type(byLabel) == "table" and (#byLabel .. " hit(s)") or "unavailable"))
+  probe("filter", "getCraftables{label}",
+    type(byLabel) == "table" and (#byLabel .. " hit") or "unavailable",
+    type(byLabel) == "table" and #byLabel > 0)
   if type(byLabel) == "table" then
     for _, c in ipairs(byLabel) do
       local info = describe(c)
@@ -50,13 +67,12 @@ end
 
 if raw ~= "" then
   local items = gt.call(me, "getItemsInNetwork", nil, { label = raw })
-  print(string.format("network  getItemsInNetwork{label} %s",
-    type(items) == "table" and (#items .. " hit(s)") or "unavailable"))
+  probe("network", "getItemsInNetwork{label}",
+    type(items) == "table" and (#items .. " hit") or "unavailable",
+    type(items) == "table" and #items > 0)
   if type(items) == "table" then
     for _, it in ipairs(items) do
-      print(string.format("  %-34s %-30s %s craftable=%s",
-        gt.short(tostring(it.label), 34), gt.short(tostring(it.name), 30),
-        gt.num(it.size or 0), tostring(it.isCraftable)))
+      show(it, gt.num(it.size or 0) .. "  craftable=" .. tostring(it.isCraftable))
     end
   end
 end
@@ -71,13 +87,12 @@ if type(fluids) == "table" then
       fluidHits[#fluidHits + 1] = f
     end
   end
-  print(string.format("fluids   name or label match     %d of %d", #fluidHits, #fluids))
+  probe("fluids", "label or internal name", #fluidHits .. " of " .. #fluids, #fluidHits > 0)
   for _, f in ipairs(fluidHits) do
-    print(string.format("  %-34s %-30s %s",
-      gt.short(tostring(f.label), 34), gt.short(tostring(f.name), 30), gt.num(f.amount or 0)))
+    show(f, gt.num(f.amount or 0))
   end
 else
-  print("fluids   getFluidsInNetwork       unavailable")
+  probe("fluids", "getFluidsInNetwork", "unavailable", false)
 end
 
 local craftables = gt.call(me, "getCraftables", nil)
@@ -105,18 +120,18 @@ for i = 1, math.min(limit, #craftables) do
   end
 end
 
-print(string.format("scan     %d of %d craftables      %d hit(s), %d unreadable",
-  scanned, #craftables, shown, failed))
+probe("scan", scanned .. " of " .. #craftables .. " craftables",
+  shown .. " hit, " .. failed .. " unreadable", shown > 0 and failed == 0)
 for _, info in ipairs(hits) do show(info) end
 if firstError then
-  print("  read error: " .. gt.short(firstError, 70))
+  tui.line(tui.c.bad, "  read error: " .. firstError)
 end
 
 if shown == 0 and #craftables > 0 then
-  print("")
-  print("=== structure of craftables[1], since nothing matched")
+  io.write("\n")
+  tui.line(tui.c.warn, "structure of craftables[1], since nothing matched")
   local first = craftables[1]
-  print("  type: " .. type(first))
+  tui.line(tui.c.dim, "  type: " .. type(first))
   if type(first) == "table" then
     local keys = {}
     for key, value in pairs(first) do
@@ -124,18 +139,17 @@ if shown == 0 and #craftables > 0 then
     end
     table.sort(keys)
     if #keys == 0 then
-      print("  no keys via pairs, members resolve through __index")
-      for _, probe in ipairs({ "label", "name", "damage", "size", "getItemStack", "request" }) do
-        print(string.format("  %-13s %s", probe, type(first[probe])))
+      tui.line(tui.c.dim, "  members resolve through __index")
+      for _, member in ipairs({ "label", "name", "getStack", "getItemStack", "request" }) do
+        tui.line(tui.c.dim, "  " .. tui.pad(member, 15) .. type(first[member]))
       end
     else
-      print("  " .. table.concat(keys, "  "))
+      tui.columns(keys, tui.c.dim)
     end
   end
-  print("  send this block if the scan still finds nothing")
 end
 if #craftables > limit then
-  print(string.format("  %d not scanned, rerun: craftables %s %s %d",
+  tui.line(tui.c.dim, string.format("  %d not scanned, rerun: craftables %s %s %d",
     #craftables - limit, raw ~= "" and raw or "''", tostring(target):sub(1, 8), #craftables))
 end
 
@@ -143,5 +157,5 @@ local cpus = gt.call(me, "getCpus", nil)
 if type(cpus) == "table" then
   local free = 0
   for _, c in ipairs(cpus) do if c.busy == false then free = free + 1 end end
-  print(string.format("cpus     %d total                  %d free", #cpus, free))
+  probe("cpus", #cpus .. " total", free .. " free", free > 0)
 end

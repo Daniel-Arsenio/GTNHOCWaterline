@@ -51,7 +51,7 @@ function t4:ph()
   if value == nil then
     if not self.warnedLine then
       self.warnedLine = true
-      gt.log(true, "t4: no line matching %q, falling back to line %d",
+      gt.warn("t4: no line matching %q, falling back to line %d",
         self.c.phPrefix, self.c.phLine)
       gt.dumpSensor(info, "pH unit")
     end
@@ -60,7 +60,7 @@ function t4:ph()
 
   if self.foundLine ~= line then
     self.foundLine = line
-    gt.log(true, "t4: reading pH from sensor line %d", line)
+    gt.warn("t4: reading pH from sensor line %d", line)
   end
   return value
 end
@@ -96,14 +96,14 @@ function t4:tick(started)
       local fluid = gt.call(self.acidT, "getFluidInTank", nil, self.acidSide, self.acidTank)
       local have = type(fluid) == "table" and (fluid.amount or 0) or 0
       if have < c.acid.bufferWarn then
-        gt.log(true, "t4: acid buffer down to %d L", have)
+        gt.warn("t4: acid buffer down to %d L", have)
       end
     end
 
     if c.base.bufferWarn and c.base.bufferWarn > 0 then
       local have = gt.countItems(self.baseT, self.baseSide, c.base.itemLabel)
       if have < c.base.bufferWarn then
-        gt.log(true, "t4: sodium hydroxide down to %d", have)
+        gt.warn("t4: sodium hydroxide down to %d", have)
       end
     end
   end
@@ -126,17 +126,17 @@ function t4:tick(started)
   if diff > 0 then
     local moved
     moved, ok = self:putDust(count)
-    gt.log(self.cfg.log.verbose, "t4 c%d pH %.2f +%d dust", self.clock.count, ph, moved)
+    gt.info(self.cfg.log.verbose, "t4 c%d pH %.2f +%d dust", self.clock.count, ph, moved)
   else
     local litres = count * c.litresPerStep
     local moved
     moved, ok = self:putAcid(litres)
-    gt.log(self.cfg.log.verbose, "t4 c%d pH %.2f -%s acid", self.clock.count, ph, gt.num(moved))
+    gt.info(self.cfg.log.verbose, "t4 c%d pH %.2f -%s acid", self.clock.count, ph, gt.num(moved))
   end
 
   if not ok then
     self.stats.shortfalls = self.stats.shortfalls + 1
-    gt.log(true, "t4 cycle %d: ran out of reagent mid dose", self.clock.count)
+    gt.warn("t4 cycle %d: ran out of reagent mid dose", self.clock.count)
     if c.haltWhenShort then
       gt.call(self.unit, "setWorkAllowed", nil, false)
     end

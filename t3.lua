@@ -53,7 +53,7 @@ function t3:consumed()
   if value == nil then
     if not self.warnedLine then
       self.warnedLine = true
-      gt.log(true, "t3: no line matching %q, falling back to line %d",
+      gt.warn("t3: no line matching %q, falling back to line %d",
         self.c.consumedPrefix, self.c.consumedLine)
       gt.dumpSensor(info, "flocculation unit")
     end
@@ -62,7 +62,7 @@ function t3:consumed()
 
   if self.foundLine ~= line then
     self.foundLine = line
-    gt.log(true, "t3: reading consumption from sensor line %d", line)
+    gt.warn("t3: reading consumption from sensor line %d", line)
   end
   return value
 end
@@ -79,7 +79,7 @@ function t3:tick(started)
       local fluid = gt.call(self.trans, "getFluidInTank", nil, self.source, self.tank)
       local have = type(fluid) == "table" and (fluid.amount or 0) or 0
       if have < warn then
-        gt.log(true, "t3: buffer down to %d L, %.1f cycles left, check the export bus",
+        gt.warn("t3: buffer down to %d L, %.1f cycles left, check the export bus",
           have, have / c.targetVolume)
       end
     end
@@ -90,7 +90,7 @@ function t3:tick(started)
   if not self.clock:working() then
     if self.reason ~= "idle" then
       self.reason = "idle"
-      gt.log(true, "t3: waiting, the plant reports no work")
+      gt.warn("t3: waiting, the plant reports no work")
     end
     return
   end
@@ -100,7 +100,7 @@ function t3:tick(started)
     self.charged = true
     if self.reason ~= "done" then
       self.reason = "done"
-      gt.log(true, "t3: sensor already reports %d L consumed, skipping the charge", already)
+      gt.warn("t3: sensor already reports %d L consumed, skipping the charge", already)
     end
     return
   end
@@ -113,7 +113,7 @@ function t3:tick(started)
   if stocked < c.targetVolume then
     want = stocked - (stocked % c.stepVolume)
     self.stats.short = self.stats.short + 1
-    gt.log(true, "t3 cycle %d: only %d L flocculant buffered, charging %d L",
+    gt.warn("t3 cycle %d: only %d L flocculant buffered, charging %d L",
       self.clock.count, stocked, want)
     if c.haltWhenShort then
       gt.call(self.unit, "setWorkAllowed", nil, false)
@@ -125,22 +125,40 @@ function t3:tick(started)
     return
   end
 
-  gt.log(true, "t3 cycle %d: moving %d L from %s tank %d to %s",
+  gt.warn("t3 cycle %d: moving %d L from %s tank %d to %s",
     self.clock.count, want, gt.SIDE_NAME[self.source] or self.source, self.tank,
     gt.SIDE_NAME[self.sink] or self.sink)
 
-  local moved = gt.pushFluid(self.trans, self.source, self.sink, want, self.tank)
+  local moved, why = gt.pushFluid(self.trans, self.source, self.sink, want, self.tank)
+
+  if moved == 0 and c.stepVolume > 0 and want > c.stepVolume then
+    gt.warn("t3: one shot of %s failed (%s), retrying in %s chunks",
+      gt.num(want), tostring(why), gt.num(c.stepVolume))
+
+    local total = 0
+    while total < want do
+      local chunk = math.min(c.stepVolume, want - total)
+      local got, err = gt.pushFluid(self.trans, self.source, self.sink, chunk, self.tank)
+      if got == 0 then
+        gt.warn("t3: chunk of %s also failed (%s)", gt.num(chunk), tostring(err))
+        break
+      end
+      total = total + got
+    end
+    moved = total
+  end
+
   self.charged = true
 
   if moved == 0 then
-    gt.log(true, "t3: nothing moved. the sink side is probably wrong, %s must be the face " ..
-      "the flocculant hatch is on. set t3.sinkSide.", gt.SIDE_NAME[self.sink] or self.sink)
+    gt.warn("t3: nothing moved (%s). check the transposer pump tier and that %s is the hatch",
+      tostring(why), gt.SIDE_NAME[self.sink] or self.sink)
   elseif moved ~= want then
-    gt.log(true, "t3 cycle %d: asked for %d L, moved %d L, check the transposer pump tier",
-      self.clock.count, want, moved)
+    gt.warn("t3 c%d asked %s moved %s, raise the transposer pump tier",
+      self.clock.count, gt.num(want), gt.num(moved))
   else
     self.stats.charged = self.stats.charged + 1
-    gt.log(self.cfg.log.verbose, "t3 c%d charged %s", self.clock.count, gt.num(moved))
+    gt.info(self.cfg.log.verbose, "t3 c%d charged %s", self.clock.count, gt.num(moved))
   end
 end
 

@@ -50,16 +50,16 @@ function stock:request(entry, count)
   local list = gt.call(self.me, "getCraftables", nil, entry.craftFilter or entry.filter)
   if type(list) ~= "table" or #list == 0 then
     self.stats.noPattern = self.stats.noPattern + 1
-    gt.log(true, "stock: no craftable pattern matches %s, run craftables.lua", entry.key)
+    gt.warn("stock: no craftable pattern matches %s, run craftables.lua", entry.key)
     return nil
   end
   local ok, job = pcall(list[1].request, count)
   if not ok or job == nil then
-    gt.log(true, "stock: request for %s rejected: %s", entry.key, tostring(job))
+    gt.warn("stock: request for %s rejected: %s", entry.key, tostring(job))
     return nil
   end
   self.stats.requested = self.stats.requested + 1
-  gt.log(self.cfg.log.verbose, "stock: requested %d %s", count, entry.key)
+  gt.info(self.cfg.log.verbose, "stock: requested %d %s", count, entry.key)
   return job
 end
 
@@ -73,7 +73,7 @@ function stock:settled(key, job)
   local okc, cancelled = pcall(job.isCanceled)
   if okc and cancelled then
     self.stats.failed = self.stats.failed + 1
-    gt.log(true, "stock: craft of %s was cancelled, check patterns and ingredients", key)
+    gt.warn("stock: craft of %s was cancelled, check patterns and ingredients", key)
     return true
   end
   return false
@@ -96,13 +96,13 @@ function stock:trendReport(entry, have)
   local rate = net / t.cycles
 
   if math.abs(rate) < (entry.trendDeadband or 1) then
-    self.gt.log(self.cfg.log.verbose, "stock: %s stable over %d cycles, loop is closed",
+    self.gt.info(self.cfg.log.verbose, "stock: %s stable over %d cycles, loop is closed",
       entry.key, t.cycles)
   elseif rate < 0 then
-    self.gt.log(true, "stock: %s losing %d per cycle over %d cycles, something is voiding",
+    self.gt.warn("stock: %s losing %d per cycle over %d cycles, something is voiding",
       entry.key, math.floor(-rate), t.cycles)
   else
-    self.gt.log(self.cfg.log.verbose, "stock: %s gaining %d per cycle", entry.key, math.floor(rate))
+    self.gt.info(self.cfg.log.verbose, "stock: %s gaining %d per cycle", entry.key, math.floor(rate))
   end
 
   self.trend[entry.key] = { first = have, cycles = 0 }
@@ -121,7 +121,7 @@ function stock:audit()
       if have and last and not self.jobSeen[entry.key] then
         local used = last - have
         if used < entry.expectedPerCycle * (self.c.consumptionTolerance or 0.5) then
-          self.gt.log(true, "stock: %s drew %d last cycle, expected about %d, the hatch may not be consuming it",
+          self.gt.warn("stock: %s drew %d last cycle, expected about %d, the hatch may not be consuming it",
             entry.key, used, entry.expectedPerCycle)
         end
       end
@@ -148,12 +148,12 @@ function stock:tick(started)
     if self.jobs[entry.key] == nil then
       local have = self:amount(entry)
       if have == nil then
-        self.gt.log(true, "stock: cannot read network level for %s", entry.key)
+        self.gt.warn("stock: cannot read network level for %s", entry.key)
       elseif have < entry.target then
         if entry.alarmOnly then
           if not self.alarmed[entry.key] then
             self.alarmed[entry.key] = true
-            self.gt.log(true, "stock: %s down to %d of %d, the recycling loop is losing ground",
+            self.gt.warn("stock: %s down to %d of %d, the recycling loop is losing ground",
               entry.key, have, entry.target)
           end
         elseif self:cpuAvailable() then

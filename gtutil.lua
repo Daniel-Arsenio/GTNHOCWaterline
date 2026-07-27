@@ -1,7 +1,10 @@
 local component = require("component")
 local computer = require("computer")
 
+local tui = dofile("/home/waterline/tui.lua")
+
 local gt = {}
+gt.tui = tui
 
 function gt.resolve(address, label)
   label = label or "component"
@@ -274,11 +277,19 @@ function gt.findItem(transposer, label, ignore)
 end
 
 function gt.pushFluid(transposer, source, sink, want, tank)
-  if want <= 0 then return 0 end
-  local ok, moved = transposer.transferFluid(source, sink, want, tank)
-  if ok ~= true then return 0 end
-  if type(moved) ~= "number" then return want end
-  return moved
+  if want <= 0 then return 0, "nothing requested" end
+
+  local called, a, b = pcall(transposer.transferFluid, source, sink, want, tank)
+  if not called then
+    return 0, "transferFluid threw: " .. tostring(a)
+  end
+
+  if type(a) == "number" then return a, nil end
+  if a ~= true then
+    return 0, "returned " .. tostring(a) .. ", " .. tostring(b)
+  end
+  if type(b) ~= "number" then return want, nil end
+  return b, nil
 end
 
 function gt.countItems(transposer, side, label)
@@ -319,9 +330,29 @@ function gt.short(text, width)
   return text:sub(1, width - 1) .. "~"
 end
 
+local function stamped(colour, fmt, ...)
+  tui.write(tui.c.dim, string.format("%5ds ", math.floor(computer.uptime())))
+  tui.write(colour, string.format(fmt, ...))
+  tui.reset()
+  io.write("\n")
+end
+
+function gt.warn(fmt, ...)
+  stamped(tui.c.warn, fmt, ...)
+end
+
+function gt.bad(fmt, ...)
+  stamped(tui.c.bad, fmt, ...)
+end
+
+function gt.info(enabled, fmt, ...)
+  if not enabled then return end
+  stamped(tui.c.text, fmt, ...)
+end
+
 function gt.log(enabled, fmt, ...)
   if not enabled then return end
-  print(string.format("%4ds " .. fmt, math.floor(computer.uptime()), ...))
+  stamped(enabled == true and tui.c.warn or tui.c.text, fmt, ...)
 end
 
 return gt

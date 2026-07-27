@@ -1,5 +1,6 @@
 local component = require("component")
 local computer = require("computer")
+local tui = dofile("/home/waterline/tui.lua")
 
 local ui = {}
 ui.__index = ui
@@ -22,13 +23,13 @@ function ui.new(cfg, gt, clock)
 end
 
 function ui:bar(fraction, width)
-  local filled = math.floor(fraction * width + 0.5)
-  return FILLED:rep(filled) .. EMPTY:rep(width - filled)
+  return tui.bar(fraction, width, FILLED, EMPTY)
 end
 
 function ui:text()
   local fraction = self.clock:fraction()
-  local width = self.c.barWidth or 24
+  local width = (self.c.barWidth and self.c.barWidth > 0) and self.c.barWidth
+    or math.max(20, math.floor(tui.width() / 3))
 
   if fraction == nil then
     return string.format("cycle %d  no progress source", self.clock.count)
@@ -56,9 +57,12 @@ function ui:tick(started)
 
   if self.c.mode == "pinned" and self.gpu then
     local w, h = self.gpu.getResolution()
+    local previous = self.gpu.setForeground(
+      self.clock.busy and tui.c.ok or tui.c.dim)
     self.gpu.set(1, h, text .. string.rep(" ", math.max(0, w - #text)))
+    self.gpu.setForeground(previous)
   else
-    print(text)
+    tui.line(self.clock.busy and tui.c.ok or tui.c.dim, text)
   end
 end
 

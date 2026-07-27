@@ -1,6 +1,7 @@
 local BASE = "/home/waterline/"
 local cfg = dofile(BASE .. "settings.lua")
 local gt = dofile(BASE .. "gtutil.lua")
+local tui = gt.tui
 local component = require("component")
 
 local TARGETS = {
@@ -22,9 +23,9 @@ local SAFE = {
   getFluidsInNetwork = true, hasWork = true, getSensorInformation = true,
 }
 
-local function first(address)
-  if type(address) == "table" then return address[1] end
-  return address
+local function first(a)
+  if type(a) == "table" then return a[1] end
+  return a
 end
 
 local rows, unset = {}, {}
@@ -35,11 +36,11 @@ for _, t in ipairs(TARGETS) do
   if address == nil or address == "" then
     unset[#unset + 1] = field
   else
-    local resolved, ctype, result = address, "-", nil
+    local resolved, ctype, result, colour = address, "-", nil, tui.c.bad
 
     if #address < 36 then
       local ok, full = pcall(component.get, address)
-      if ok and type(full) == "string" then resolved = full else resolved = nil end
+      resolved = (ok and type(full) == "string") and full or nil
     end
 
     if resolved == nil then
@@ -59,32 +60,43 @@ for _, t in ipairs(TARGETS) do
         local called, value = pcall(dev[method])
         if not called then
           result = method .. " THREW"
-        elseif type(value) == "table" then
-          result = string.format("ok  %s=%d", method, #value)
         else
-          result = string.format("ok  %s=%s", method, tostring(value))
+          colour = tui.c.ok
+          result = string.format("%s = %s", method,
+            type(value) == "table" and (#value .. " entries") or tostring(value))
         end
       else
-        result = "ok  " .. method
+        colour = tui.c.ok
+        result = method .. " present"
       end
     end
 
-    rows[#rows + 1] = { field, address:sub(1, 8), ctype, result }
+    rows[#rows + 1] = { field, address:sub(1, 8), ctype, result, colour }
   end
 end
 
+tui.header("component check", #rows .. " configured, " .. #unset .. " unset")
+
 if cfg.__issues and #cfg.__issues > 0 then
-  print("config.lua has " .. #cfg.__issues .. " unrecognised key(s):")
-  print("  " .. table.concat(cfg.__issues, " "))
-  print("")
+  tui.line(tui.c.warn, #cfg.__issues .. " unrecognised key(s) in config.lua, ignored")
+  tui.columns(cfg.__issues, tui.c.dim)
+  io.write("\n")
 end
 
-print(string.format("%-19s %-9s %-16s %s", "field", "prefix", "type", "result"))
+tui.write(tui.c.dim, tui.pad("field", 20) .. tui.pad("prefix", 10) .. tui.pad("type", 18) .. "result")
+tui.reset()
+io.write("\n")
+
 for _, r in ipairs(rows) do
-  print(string.format("%-19s %-9s %-16s %s", r[1], r[2], r[3], r[4]))
+  tui.write(tui.c.val, tui.pad(r[1], 20))
+  tui.write(tui.c.accent, tui.pad(r[2], 10))
+  tui.write(tui.c.key, tui.pad(r[3], 18))
+  tui.write(r[5], r[4])
+  tui.reset()
+  io.write("\n")
 end
 
 if #unset > 0 then
-  print("")
-  print("unset: " .. table.concat(unset, " "))
+  io.write("\n")
+  tui.line(tui.c.dim, "unset  ", tui.c.dim, table.concat(unset, "  "))
 end

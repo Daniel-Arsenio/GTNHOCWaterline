@@ -24,7 +24,11 @@ function watch.new(cfg, gt, clock)
     return self
   end
 
-  self.me = gt.network(self.c.interfaceAddress, "getFluidsInNetwork", "watch.interfaceAddress")
+  local address = self.c.interfaceAddress
+  if address == nil or address == "" or (type(address) == "table" and (address[1] or "") == "") then
+    address = cfg.stock.interfaceAddress
+  end
+  self.me = gt.network(address, "getFluidsInNetwork", "watch.interfaceAddress")
   self.tracked = {}
   for _, f in ipairs(self.c.fluids) do
     self.tracked[#self.tracked + 1] = { key = f.key, label = f.label, last = nil, stale = 0 }
@@ -41,11 +45,11 @@ function watch:tickUnits()
       u.idle = u.idle + 1
       if u.idle == 1 or u.idle % (self.c.repeatEvery or 5) == 0 then
         self.stats.alerts = self.stats.alerts + 1
-        gt.log(true, "watch: %s idle for %d cycle(s), check its inputs", u.name, u.idle)
+        gt.warn("watch: %s idle for %d cycle(s), check its inputs", u.name, u.idle)
       end
     else
       if u.idle >= (self.c.repeatEvery or 5) then
-        gt.log(true, "watch: %s running again after %d idle cycle(s)", u.name, u.idle)
+        gt.warn("watch: %s running again after %d idle cycle(s)", u.name, u.idle)
       end
       u.idle = 0
     end
@@ -70,12 +74,12 @@ function watch:tickNetwork()
       local threshold = self.c.staleCycles or 3
       if t.stale == threshold or (t.stale > threshold and t.stale % (self.c.repeatEvery or 5) == 0) then
         self.stats.alerts = self.stats.alerts + 1
-        gt.log(true, "watch: %s flat at %d L for %d cycles, that stage has stalled",
+        gt.warn("watch: %s flat at %d L for %d cycles, that stage has stalled",
           t.key, now, t.stale)
       end
     else
       if t.stale >= (self.c.staleCycles or 3) then
-        gt.log(true, "watch: %s moving again after %d flat cycles", t.key, t.stale)
+        gt.warn("watch: %s moving again after %d flat cycles", t.key, t.stale)
       end
       t.stale = 0
     end

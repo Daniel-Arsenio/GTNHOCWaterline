@@ -6,7 +6,7 @@ local REPO = "https://raw.githubusercontent.com/Daniel-Arsenio/GTNHOCWaterline/m
 local DEST = "/home/waterline/"
 
 local FILES = {
-  "gtutil.lua", "cycle.lua", "defaults.lua", "settings.lua", "ui.lua",
+  "tui.lua", "gtutil.lua", "cycle.lua", "defaults.lua", "settings.lua", "ui.lua",
   "power.lua", "stock.lua",
   "watch.lua", "t2.lua", "t3.lua", "t4.lua",
   "run.lua", "probe.lua", "craftables.lua", "discover.lua", "check.lua", "levels.lua", "install.lua",

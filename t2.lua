@@ -42,7 +42,7 @@ function t2:tick(started)
   if level == nil then
     if not self.warned then
       self.warned = true
-      gt.log(true, "t2: cannot read Ozone in the network, check the label in config.lua")
+      gt.warn("t2: cannot read Ozone in the network, check the label in config.lua")
     end
     return
   end
@@ -57,15 +57,15 @@ function t2:tick(started)
       self.stats.byTier[tier] = self.stats.byTier[tier] + 1
     else
       self.stats.starved = self.stats.starved + 1
-      gt.log(true, "t2 cycle %d: only %d L Ozone in the network, below the smallest recipe",
+      gt.warn("t2 cycle %d: only %d L Ozone in the network, below the smallest recipe",
         self.clock.count, level)
     end
 
     if buffer < (c.minBufferCycles or 2) then
-      gt.log(true, "t2 cycle %d: %d L Ozone left, %.1f full charges, engravers are behind",
+      gt.warn("t2 cycle %d: %d L Ozone left, %.1f full charges, engravers are behind",
         self.clock.count, level, buffer)
     elseif self.cfg.log.verbose then
-      gt.log(true, "t2 cycle %d: %d L Ozone, %.1f full charges buffered", self.clock.count, level, buffer)
+      gt.warn("t2 cycle %d: %d L Ozone, %.1f full charges buffered", self.clock.count, level, buffer)
     end
   end
 
@@ -74,7 +74,7 @@ function t2:tick(started)
     if self.gated ~= want then
       gt.call(self.unit, "setWorkAllowed", nil, want)
       self.gated = want
-      gt.log(true, "t2 %s unit, network Ozone at %d L", want and "enabled" or "held off", level)
+      gt.warn("t2 %s unit, network Ozone at %d L", want and "enabled" or "held off", level)
     end
   end
 end

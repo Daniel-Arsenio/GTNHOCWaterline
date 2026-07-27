@@ -64,10 +64,11 @@ function power:report()
     names[#names + 1] = u.name .. ":" .. u.tier
   end
 
-  print(string.format("power  %s usable  %s per parallel  %s",
-    self.gt.num(budget), self.gt.num(per), table.concat(names, " ")))
-  print(string.format("power  SET EVERY UNIT TO %d PARALLELS  draw %s  spare %s",
-    n, self.gt.num(n * per), self.gt.num(budget - n * per)))
+  local tui = self.gt.tui
+  tui.line(tui.c.key, "power   ", tui.c.val, self.gt.num(budget) .. " usable",
+    tui.c.dim, "   " .. self.gt.num(per) .. " per parallel   " .. table.concat(names, " "))
+  tui.line(tui.c.key, "power   ", tui.c.accent, "SET EVERY UNIT TO " .. n .. " PARALLELS",
+    tui.c.dim, "   draw " .. self.gt.num(n * per) .. "   spare " .. self.gt.num(budget - n * per))
 end
 
 function power:tick(started)

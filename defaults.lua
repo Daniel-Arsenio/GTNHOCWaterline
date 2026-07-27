@@ -13,7 +13,8 @@ return {
   ui = {
     enabled = true,
     mode = "pinned",
-    barWidth = 24,
+    maximise = true,
+    barWidth = false,
     minInterval = 0.5,
   },
 
